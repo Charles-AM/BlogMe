@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+newsletter.db
+credentials.json
+token.json
+.DS_Store
