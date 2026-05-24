@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Your AI-curated briefing</title>
+    <style>
+      body { margin: 0; background: #f4f7fb; color: #172033; font-family: Arial, Helvetica, sans-serif; }
+      .wrap { width: 100%; padding: 24px 0; }
+      .container { max-width: 680px; margin: 0 auto; background: #ffffff; border: 1px solid #dde5ef; }
+      .header { padding: 28px 28px 18px; background: #10233f; color: #ffffff; }
+      .header p { margin: 8px 0 0; color: #c6d5ea; line-height: 1.5; }
+      h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: 0; }
+      .content { padding: 10px 28px 28px; }
+      .article { border-bottom: 1px solid #e7edf5; padding: 22px 0; }
+      .article:last-child { border-bottom: 0; }
+      .meta { color: #5b6b81; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
+      h2 { margin: 0 0 10px; font-size: 20px; line-height: 1.25; letter-spacing: 0; }
+      h2 a { color: #0a5bd3; text-decoration: none; }
+      .summary { color: #29364a; font-size: 15px; line-height: 1.55; white-space: pre-line; }
+      .score { display: inline-block; margin-top: 12px; padding: 5px 9px; background: #eaf2ff; color: #114e9e; font-size: 12px; font-weight: 700; }
+      .footer { padding: 20px 28px 28px; color: #66758a; font-size: 12px; line-height: 1.5; }
+      .footer a { color: #0a5bd3; }
+      @media (max-width: 520px) {
+        .wrap { padding: 0; }
+        .container { border-left: 0; border-right: 0; }
+        .header, .content, .footer { padding-left: 18px; padding-right: 18px; }
+        h1 { font-size: 24px; }
+        h2 { font-size: 18px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="container">
+        <div class="header">
+          <h1>Your AI-curated briefing</h1>
+          <p>Filtered for {{ recipient }} from live news, Reddit discussions, and RSS fallbacks.</p>
+        </div>
+        <div class="content">
+          {% for article in articles %}
+            <article class="article">
+              <div class="meta">{{ article.category.title() }} · {{ article.source }}</div>
+              <h2><a href="{{ article.url }}">{{ article.title }}</a></h2>
+              <div class="summary">{{ article.summary }}</div>
+              <span class="score">Score {{ "%.1f"|format(article.score) }}/10</span>
+            </article>
+          {% endfor %}
+        </div>
+        <div class="footer">
+          You received this because you subscribed to the AI Newsletter System demo.
+          <a href="{{ unsubscribe_url }}">Unsubscribe</a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

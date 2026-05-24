@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Newsletter Preferences</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <div>
+          <p class="eyebrow">Portfolio-grade newsletter engine</p>
+          <h1>Curate a daily AI briefing</h1>
+          <p class="lede">Pick categories and keywords. The backend fetches live sources, dedupes sent links, scores relevance, summarizes with Gemini, and sends responsive Gmail newsletters.</p>
+        </div>
+        {% if saved %}
+          <div class="success">Preferences saved for {{ email }}.</div>
+        {% endif %}
+        <form action="/preferences" method="post">
+          <label>
+            Email
+            <input name="email" type="email" placeholder="you@example.com" required>
+          </label>
+
+          <fieldset>
+            <legend>Categories</legend>
+            <div class="grid">
+              {% for category in categories %}
+                <label class="check">
+                  <input type="checkbox" name="categories" value="{{ category }}" checked>
+                  <span>{{ category.title() }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </fieldset>
+
+          <label>
+            Keywords
+            <input name="keywords" type="text" placeholder="AI, recruiting, playoffs">
+          </label>
+
+          <button type="submit">Save preferences</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>
