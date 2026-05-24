@@ -1,0 +1,6 @@
+streamlit
+sportscore
+pandas
+streamlit-autorefresh
+pypdf
+openai

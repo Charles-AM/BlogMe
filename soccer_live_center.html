@@ -1,0 +1,184 @@
+<script>
+const PROXY="http://localhost:5000",REFRESH=30,NS="slc:";
+const TTL={live:30000,stand:300000,news:180000,sc:300000,fix:120000};
+const S={live:[],news:[],proxyOnline:false,hasKey:false,countdown:REFRESH,autoRefresh:true,scLeague:"all",scStatus:"all",injuriesOnly:false,errors:[]};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=d=>d?new Date(d).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):"TBD";
+function cGet(k,t){try{const i=JSON.parse(localStorage.getItem(NS+k)||"null");if(i&&Date.now()-i.t<t)return i.v}catch{}return null}
+function cSet(k,v){try{localStorage.setItem(NS+k,JSON.stringify({t:Date.now(),v}))}catch{}}
+function stored(k,fb){try{const v=localStorage.getItem(NS+k);return v==null?fb:JSON.parse(v)}catch{return fb}}
+function store(k,v){try{localStorage.setItem(NS+k,JSON.stringify(v))}catch{}}
+async function pg(path,ttlKey){const ck=path.replace(/\W+/g,"_");const c=cGet(ck,TTL[ttlKey]||30000);if(c)return c;const r=await fetch(PROXY+path,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error(`HTTP ${r.status}`);const d=await r.json();cSet(ck,d);return d}
+const isLive=m=>m.status==="live",isFin=m=>m.status==="finished",isUp=m=>["upcoming","ns","tbd"].includes(m.status);
+function badge(m){
+  if(isLive(m))return`<span class="badge live">● ${esc(m.minute?m.minute+"'":"LIVE")}</span>`;
+  if(m.status_short==="HT")return`<span class="badge ht">HT</span>`;
+  if(isFin(m))return`<span class="badge ft">FT</span>`;
+  if(isUp(m))return`<span class="badge upcoming">${esc(fmt(m.time))}</span>`;
+  return`<span class="badge">${esc(m.status_text||m.status||"")}</span>`;
+}
+function logo(name,src){
+  if(src)return`<img class="team-logo" src="${esc(src)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'team-init\\'>${esc((name||"?").slice(0,3).toUpperCase())}</div>'">`;
+  return`<div class="team-init">${esc((name||"?").slice(0,3).toUpperCase())}</div>`;
+}
+function scoreBox(m){
+  const hs=m.home_score,as=m.away_score,lc=isLive(m)?"live-score":"";
+  const main=(hs!=null&&as!=null)?`${hs}-${as}`:isUp(m)?"vs":"-";
+  const det=m.score_detail||"";
+  return`<div class="scorebox ${lc}"><div class="main-score">${esc(main)}</div>${det?`<div class="score-detail">${esc(det)}</div>`:""}</div>`;
+}
+function matchCard(m){
+  const hs=Number(m.home_score??-1),as=Number(m.away_score??-1);
+  const hw=isFin(m)&&hs>as,aw=isFin(m)&&as>hs;
+  const cc=isLive(m)?"live-card":isFin(m)?"finished-card":"";
+  const sc=(m.home_scorers?.length||m.away_scorers?.length)?`<div class="scorers-list">${(m.home_scorers||[]).map(s=>`<div class="scorer-row"><span>⚽ ${esc(s)}</span><span></span></div>`).join("")}${(m.away_scorers||[]).map(s=>`<div class="scorer-row"><span></span><span>${esc(s)} ⚽</span></div>`).join("")}</div>`:"";
+  return`<article class="match-card ${cc}">
+    <div class="match-top"><div class="match-league">${m.league_logo?`<img src="${esc(m.league_logo)}" alt="" loading="lazy">`:""} ${esc(m.competition||"Match")}${m.round?` · ${esc(m.round)}`:""}</div>${badge(m)}</div>
+    <div class="teams-row">
+      <div class="team-side">${logo(m.home,m.home_logo)}<div class="team-name ${hw?"winner":aw?"loser":""}">${esc(m.home||"TBD")}</div></div>
+      ${scoreBox(m)}
+      <div class="team-side away"><div class="team-name ${aw?"winner":hw?"loser":""}">${esc(m.away||"TBD")}</div>${logo(m.away,m.away_logo)}</div>
+    </div>${sc}
+    <div class="match-foot"><span>${esc(m.venue||"")}${m.city?` · ${esc(m.city)}`:""}</span><span style="font-size:.68rem">${esc(m.source||"")}</span></div>
+  </article>`;
+}
+async function checkProxy(){
+  try{
+    const r=await fetch(`${PROXY}/api/health`,{signal:AbortSignal.timeout(2500)});
+    const d=await r.json();
+    S.proxyOnline=true;S.hasKey=d.has_key||false;
+    $("#proxy-health").className="health ok";$("#proxy-health").textContent="● Proxy online";
+    $("#proxy-status-text").textContent=`Online · Key: ${d.has_key?"active":"missing"}`;
+    if(d.has_key){$("#pill-afl").className="pill on";$("#pill-afl").textContent="● API-Football";}
+    $("#afl-status").textContent=d.has_key?"Key active — 100 req/day free plan":"No key — add to soccer_proxy.py";
+  }catch{
+    S.proxyOnline=false;
+    $("#proxy-health").className="health err";$("#proxy-health").textContent="● Proxy offline";
+    $("#proxy-status-text").textContent="Offline — run: python soccer_proxy.py";
+  }
+}
+async function loadLive({bypass=false}={}){
+  if(!S.proxyOnline){showNotice("scores-alert");$("#scores-list").innerHTML="";renderSummary();return}
+  try{
+    const c=!bypass&&cGet("live",TTL.live);let data;
+    if(c){data=c}else{const r=await fetch(`${PROXY}/api/live`,{signal:AbortSignal.timeout(10000)});data=await r.json();cSet("live",data)}
+    S.live=data.matches||[];
+    $("#last-updated").textContent=`Updated ${new Date(data.updated||Date.now()).toLocaleTimeString()}`;
+    $("#scores-alert").innerHTML="";renderScores();renderTicker();renderSummary();
+  }catch(e){S.errors.push(e.message);$("#scores-alert").innerHTML=`<div class="notice err"><span>!</span><div><strong>Load failed</strong> ${esc(e.message)}</div></div>`;}
+}
+function renderScores(){
+  let ms=[...S.live];
+  const lf=$("#scores-league-filter").value,sf=$("#scores-status-filter").value;
+  if(lf!=="all")ms=ms.filter(m=>String(m.league_id)===lf);
+  if(sf!=="all")ms=ms.filter(m=>m.status===sf);
+  ms.sort((a,b)=>{const o={live:0,upcoming:1,finished:2};return(o[a.status]??3)-(o[b.status]??3)||(a.time||"").localeCompare(b.time||"")});
+  const ld=$("#live-dot");if(ld)ld.style.display=S.live.filter(isLive).length>0?"":"none";
+  $("#scores-list").innerHTML=ms.length?ms.map(matchCard).join(""):`<div class="empty">No matches for your filters right now.</div>`;
+}
+function renderTicker(){
+  const live=S.live.filter(isLive);
+  if(!live.length){$("#ticker-inner").textContent="No live matches right now";return}
+  const items=live.map(m=>`<span style="display:inline-flex;align-items:center;gap:8px">${esc(m.home)} <span class="ticker-score">${m.home_score??0}-${m.away_score??0}</span> ${esc(m.away)}${m.minute?" "+m.minute+"'":""}</span>`);
+  $("#ticker-inner").innerHTML=[...items,...items].join("<span style='opacity:.4'>  |  </span>");
+}
+function renderSummary(){
+  $("#stat-live").textContent=S.live.filter(isLive).length;
+  $("#stat-today").textContent=S.live.filter(m=>!isFin(m)).length;
+  $("#stat-fin").textContent=S.live.filter(isFin).length;
+  $("#stat-cd").textContent=S.autoRefresh?`${S.countdown}s`:"Off";
+}
+async function loadFixtures(){
+  const lg=$("#fix-league").value,out=$("#fixtures-output");
+  if(!S.proxyOnline){out.innerHTML=noticeHtml();return}
+  out.innerHTML=`<div class="empty"><span class="spinner"></span> Loading…</div>`;
+  try{const d=await pg(`/api/fixtures?league=${lg}&next=20`,"fix");const ms=d.matches||[];out.innerHTML=ms.length?`<div class="match-grid">${ms.map(matchCard).join("")}</div>`:`<div class="empty">No upcoming fixtures found.</div>`}
+  catch(e){out.innerHTML=`<div class="notice err"><span>!</span><div><strong>Error</strong> ${esc(e.message)}</div></div>`}
+}
+async function loadStandings(){
+  const lg=$("#stand-league").value,out=$("#standings-output");
+  if(!S.proxyOnline){out.innerHTML=noticeHtml();return}
+  out.innerHTML=`<div class="empty"><span class="spinner"></span> Loading…</div>`;
+  try{
+    const d=await pg(`/api/standings?league=${lg}`,"stand");const rows=d.standings||[];
+    if(!rows.length){out.innerHTML=`<div class="empty">No standings data.</div>`;return}
+    const rh=rows.map((r,i)=>{
+      const pos=Number(r.rank),cls=pos<=4?"cl-spot":pos===5?"el-spot":pos>=rows.length-2?"rel-spot":"";
+      const form=(r.form||"").split("").slice(-5).map(c=>`<div class="form-dot ${c}">${c}</div>`).join("");
+      return`<tr class="${cls} rank-${pos}"><td class="rank-cell">${pos}</td><td><div class="team-cell">${r.logo?`<img src="${esc(r.logo)}" alt="" loading="lazy">`:""}<strong>${esc(r.name)}</strong></div></td><td>${r.played}</td><td>${r.won}</td><td>${r.drawn}</td><td>${r.lost}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd>0?"+"+r.gd:r.gd}</td><td><strong>${r.points}</strong></td><td><div class="form">${form}</div></td></tr>`;
+    }).join("");
+    out.innerHTML=`<div style="margin-bottom:10px;font-size:.78rem;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap"><span><span style="display:inline-block;width:10px;height:10px;background:var(--blue);border-radius:2px;margin-right:4px"></span>UCL</span><span><span style="display:inline-block;width:10px;height:10px;background:var(--gold);border-radius:2px;margin-right:4px"></span>Europa</span><span><span style="display:inline-block;width:10px;height:10px;background:var(--red2);border-radius:2px;margin-right:4px"></span>Relegation</span><span style="margin-left:auto">${esc(d.source||"")}</span></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Form</th></tr></thead><tbody>${rh}</tbody></table></div>`;
+  }catch(e){out.innerHTML=`<div class="notice err"><span>!</span><div><strong>Error</strong> ${esc(e.message)}</div></div>`}
+}
+async function loadScorers(){
+  const lg=$("#scorers-league").value,out=$("#scorers-output");
+  if(!S.proxyOnline){out.innerHTML=noticeHtml();return}
+  out.innerHTML=`<div class="empty"><span class="spinner"></span> Loading…</div>`;
+  try{
+    const d=await pg(`/api/topscorers?league=${lg}`,"sc");const sc=d.scorers||[];
+    if(!sc.length){out.innerHTML=`<div class="empty">No scorer data.</div>`;return}
+    out.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${sc.map((s,i)=>`<div class="scorer-card"><div class="scorer-rank ${i<3?"top":""}">${i+1}</div>${s.photo?`<img class="scorer-photo" src="${esc(s.photo)}" alt="" loading="lazy" onerror="this.style.display='none'">`:""}<div class="scorer-info"><div class="scorer-name">${esc(s.name)}</div><div class="scorer-team">${s.team_logo?`<img src="${esc(s.team_logo)}" alt="">`:""} ${esc(s.team)}</div><div style="font-size:.73rem;color:var(--muted);margin-top:2px">${s.apps} apps · ${s.assists} ast</div></div><div class="scorer-goals">${s.goals}<span>goals</span></div></div>`).join("")}</div>`;
+  }catch(e){out.innerHTML=`<div class="notice err"><span>!</span><div><strong>Error</strong> ${esc(e.message)}</div></div>`}
+}
+async function loadNews({bypass=false}={}){
+  if(!S.proxyOnline){$("#news-alert").innerHTML=noticeHtml();$("#news-list").innerHTML="";return}
+  try{
+    const c=!bypass&&cGet("news",TTL.news);let data;
+    if(c){data=c}else{const r=await fetch(`${PROXY}/api/news`,{signal:AbortSignal.timeout(10000)});data=await r.json();cSet("news",data)}
+    S.news=data.articles||[];$("#news-alert").innerHTML="";renderNews();
+  }catch(e){$("#news-alert").innerHTML=`<div class="notice err"><span>!</span><div><strong>News failed</strong> ${esc(e.message)}</div></div>`}
+}
+function renderNews(){
+  let arts=S.injuriesOnly?S.news.filter(a=>a.is_injury):S.news;
+  if(!arts.length){$("#news-list").innerHTML=`<div class="empty">No articles found.</div>`;return}
+  $("#news-list").innerHTML=arts.map(a=>{
+    const pub=a.published?new Date(a.published).toLocaleDateString([],{month:'short',day:'numeric'}):"";
+    return`<article class="news-card ${a.is_injury?"injury-card":""}">
+      ${a.image?`<img class="news-img" src="${esc(a.image)}" alt="" loading="lazy" onerror="this.style.display='none'">`:``}
+      <div class="news-body"><div class="news-headline">${a.is_injury?"🏥 ":""}${esc(a.headline)}</div>
+      ${a.description?`<div class="news-desc">${esc(a.description.slice(0,140))}${a.description.length>140?"…":""}</div>`:""}
+      <div class="news-foot"><span>${esc(pub)} · ${esc(a.league||"")}</span>${a.url?`<a href="${esc(a.url)}" target="_blank" rel="noopener">Read ↗</a>`:""}</div></div>
+    </article>`;
+  }).join("");
+}
+function noticeHtml(){return`<div class="notice warn"><span>⚠</span><div><strong>Proxy required</strong><ol><li>Run: <code>python soccer_proxy.py</code></li><li>Keep terminal open and reload</li></ol></div></div>`}
+function showNotice(id){const el=$(‌`#${id}`);if(el)el.innerHTML=noticeHtml()}
+function renderStatus(){
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith(NS));
+  $("#status-json").textContent=JSON.stringify({proxy:{online:S.proxyOnline,url:PROXY},apiFootball:{hasKey:S.hasKey},live:{count:S.live.length,liveNow:S.live.filter(isLive).length},news:{count:S.news.length},cache:`${keys.length} items`,errors:S.errors.slice(-6)},null,2);
+}
+function setupEvents(){
+  $$(".tab").forEach(t=>t.addEventListener("click",()=>{
+    $$(".tab").forEach(x=>x.setAttribute("aria-selected","false"));
+    $$(".view").forEach(v=>v.classList.remove("active"));
+    t.setAttribute("aria-selected","true");
+    const v=$(`#${t.dataset.view}`);v.classList.add("active");v.focus({preventScroll:true});
+    if(t.dataset.view==="status")renderStatus();
+  }));
+  $("#refresh-btn").addEventListener("click",()=>{S.countdown=REFRESH;loadLive({bypass:true})});
+  $("#auto-refresh").addEventListener("change",e=>{S.autoRefresh=e.target.checked;store("autoRefresh",S.autoRefresh);renderSummary()});
+  $("#theme-btn").addEventListener("click",()=>{const t=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=t;store("theme",t)});
+  $("#scores-league-filter").addEventListener("change",renderScores);
+  $("#scores-status-filter").addEventListener("change",renderScores);
+  $("#load-fixtures").addEventListener("click",loadFixtures);
+  $("#load-standings").addEventListener("click",loadStandings);
+  $("#load-scorers").addEventListener("click",loadScorers);
+  $("#reload-news").addEventListener("click",()=>loadNews({bypass:true}));
+  $("#injuries-only").addEventListener("change",e=>{S.injuriesOnly=e.target.checked;renderNews()});
+  $("#clear-cache").addEventListener("click",()=>{Object.keys(localStorage).filter(k=>k.startsWith(NS)).forEach(k=>localStorage.removeItem(k));S.errors=[];loadLive({bypass:true});renderStatus()});
+  $("#league-select").addEventListener("change",e=>{$("#scores-league-filter").value=e.target.value;renderScores()});
+}
+async function init(){
+  S.autoRefresh=stored("autoRefresh",true);
+  $("#auto-refresh").checked=S.autoRefresh;
+  document.documentElement.dataset.theme=stored("theme","dark");
+  setupEvents();
+  await checkProxy();
+  await loadLive({bypass:true});
+  loadNews();
+  $("#stand-league").value="39";
+  setInterval(()=>{if(!S.autoRefresh){renderSummary();return}S.countdown--;if(S.countdown<=0){S.countdown=REFRESH;loadLive({bypass:true})}renderSummary()},1000);
+}
+init();
+</script></body></html>
