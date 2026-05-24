@@ -1,0 +1,58 @@
+name: Daily AI Newsletter
+
+on:
+  schedule:
+    # 8 AM America/New_York during daylight saving time is 12:00 UTC.
+    # Adjust to 13:00 UTC during standard time if exact local wall-clock time matters.
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+    inputs:
+      send:
+        description: "Send real emails instead of dry-run"
+        required: true
+        default: "false"
+
+jobs:
+  run-newsletter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore SQLite cache
+        uses: actions/cache@v4
+        with:
+          path: newsletter.db
+          key: newsletter-db-${{ github.run_id }}
+          restore-keys: |
+            newsletter-db-
+
+      - name: Restore Gmail token
+        if: ${{ secrets.GMAIL_TOKEN_JSON_B64 != '' }}
+        run: echo "${{ secrets.GMAIL_TOKEN_JSON_B64 }}" | base64 --decode > token.json
+
+      - name: Run daily newsletter
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          WELT_API_BASE_URL: ${{ secrets.WELT_API_BASE_URL }}
+          WELT_API_KEY: ${{ secrets.WELT_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_TOKEN_JSON: token.json
+          GMAIL_CREDENTIALS_JSON: credentials.json
+        run: |
+          if [ "${{ github.event.inputs.send }}" = "true" ]; then
+            python scripts/run_daily.py --send
+          else
+            python scripts/run_daily.py
+          fi
