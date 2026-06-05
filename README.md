@@ -12,7 +12,7 @@ A light, clean Firebase blog for anime, manga, manhua, and ranking-style posts.
 - `script.js` - Firebase, rendering, post CRUD, archive logic
 - `firebase-config.js` - Firebase web app config
 - `netlify.toml` - Netlify static hosting config
-- `assets/regressed-ranker-hero.png` - homepage banner image
+- `assets/regressed-ranker-hero.jpg` - homepage banner image
 
 ## Firebase Setup
 
@@ -142,6 +142,24 @@ http://localhost:8080/rr-vault-9k4m2.html
 1. Keep the private admin page name unlinked, or rename it again.
 2. Go to [Netlify Drop](https://app.netlify.com/drop).
 3. Drag the project folder into the page.
+
+## Custom Domain
+
+After the site is deployed on Netlify:
+
+1. Open the site in Netlify.
+2. Go to **Domain management**.
+3. Click **Add a domain**.
+4. Enter your domain, for example `regressedranker.com`.
+5. If you buy the domain through Netlify, Netlify handles DNS automatically.
+6. If you buy it elsewhere, add the DNS records Netlify shows you.
+7. Wait for Netlify to issue the free HTTPS certificate.
+
+Recommended domain style:
+
+- `regressedranker.com`
+- `regressedranker.net`
+- `regressedranker.blog`
 
 ## Posting
 

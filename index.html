@@ -28,15 +28,30 @@
       </header>
 
       <main>
-        <section class="hero">
-          <div class="hero-copy">
-            <img class="hero-logo-image" src="assets/regressed-ranker-hero.png" alt="Regressed Ranker anime, manga, and manhua banner">
-            <h1 class="visually-hidden">Regressed Ranker</h1>
-            <div class="quick-links" aria-label="Quick links">
-              <a href="#posts-grid">Read posts</a>
-              <a href="recommendations.html">See recommendations</a>
-              <a href="archive.html">Browse archive</a>
+        <section class="home-hero">
+          <div class="hero-art">
+            <img src="assets/regressed-ranker-hero.jpg" alt="Regressed Ranker anime, manga, and manhua banner">
+            <div class="hero-glass">
+              <p class="eyebrow">Anime · Manga · Manhua</p>
+              <h1>Start here.</h1>
+              <p>Read the latest posts, browse picks, and keep up with the ranker.</p>
+              <div class="quick-links" aria-label="Quick links">
+                <a href="#posts-grid">Read posts</a>
+                <a href="#home-recommendations">Top picks</a>
+                <a href="archive.html">Archive</a>
+              </div>
             </div>
+          </div>
+          <div class="hero-side">
+            <div class="mini-panel">
+              <span>Posts</span>
+              <strong id="hero-post-total">0</strong>
+            </div>
+            <div class="mini-panel">
+              <span>Recommendations</span>
+              <strong id="hero-rec-total">0</strong>
+            </div>
+            <a class="side-link" href="recommendations.html">Open full ranker</a>
           </div>
         </section>
 
@@ -67,6 +82,21 @@
           </div>
           <div class="pagination" id="pagination"></div>
         </section>
+
+        <section class="content-band recommendations-preview" id="home-recommendations">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Ranker</p>
+              <h2>Top Recommendations</h2>
+            </div>
+            <a class="ghost-button" href="recommendations.html">View all</a>
+          </div>
+          <div class="recommendation-strip" id="home-recommendations-list" aria-live="polite"></div>
+          <div class="empty-state hidden" id="home-recommendations-empty">
+            <h3>No recommendations yet</h3>
+            <p>Recommendations will show here automatically.</p>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -84,6 +114,17 @@
             <div class="tag-row"></div>
           </div>
         </a>
+      </article>
+    </template>
+
+    <template id="home-recommendation-template">
+      <article class="mini-rec-card reveal-card">
+        <img alt="">
+        <div>
+          <span class="rank-number compact"></span>
+          <h3></h3>
+          <p></p>
+        </div>
       </article>
     </template>
 

@@ -40,9 +40,12 @@
               <p class="eyebrow">Browse</p>
               <h2>Current Picks</h2>
             </div>
-            <select class="genre-filter" id="genre-filter" aria-label="Filter recommendations by genre">
-              <option value="all">All genres</option>
-            </select>
+            <div class="recommendation-tools">
+              <input id="recommendation-search" type="search" placeholder="Search recommendations" aria-label="Search recommendations">
+              <select class="genre-filter" id="genre-filter" aria-label="Filter recommendations by genre">
+                <option value="all">All genres</option>
+              </select>
+            </div>
           </div>
           <div class="leaderboard" id="rankings-list" aria-live="polite"></div>
           <div class="empty-state hidden" id="rankings-empty">

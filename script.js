@@ -28,6 +28,7 @@ const auth = getAuth(app);
 const page = document.body.dataset.page;
 const POSTS_PER_PAGE = 6;
 let homePosts = [];
+let currentRankings = [];
 
 const AI_REVIEW_PROMPT =
   "Write a short anime review (150-300 words) as a passionate human journalist. Use short sentences, occasional humor, genuine emotion, and a natural voice. Avoid bullet points, lists, and formal language. Make it feel personal, like a friend recommending an anime. Do not include any AI-sounding phrases such as 'as an AI' or 'in conclusion'. Just write the review.";
@@ -160,11 +161,13 @@ function renderPostCards(posts, currentPage = 1) {
 
   const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
   const start = (currentPage - 1) * POSTS_PER_PAGE;
-  posts.slice(start, start + POSTS_PER_PAGE).forEach((post) => {
+  posts.slice(start, start + POSTS_PER_PAGE).forEach((post, index) => {
     const clone = template.content.cloneNode(true);
+    const card = clone.querySelector(".post-card");
     const link = clone.querySelector("a");
     const img = clone.querySelector("img");
     const tags = clone.querySelector(".tag-row");
+    if (currentPage === 1 && index === 0 && posts.length > 1) card.classList.add("featured-post-card");
     link.href = `index.html?post=${post.id}-${slugify(post.title)}`;
     img.src = post.imageUrl;
     img.alt = post.title;
@@ -224,10 +227,34 @@ function applyPostFilters() {
 
 function setupPostFilters(posts) {
   homePosts = posts;
+  if ($("#hero-post-total")) $("#hero-post-total").textContent = posts.length;
   populatePostCategoryFilter(posts);
   $("#post-search")?.addEventListener("input", applyPostFilters);
   $("#post-category-filter")?.addEventListener("change", applyPostFilters);
   applyPostFilters();
+}
+
+function renderHomeRecommendations(rankings) {
+  const list = $("#home-recommendations-list");
+  const empty = $("#home-recommendations-empty");
+  const total = $("#hero-rec-total");
+  const template = $("#home-recommendation-template");
+  if (!list || !template) return;
+
+  const topRankings = rankings.slice(0, 3);
+  if (total) total.textContent = rankings.length;
+  list.innerHTML = "";
+  empty?.classList.toggle("hidden", topRankings.length > 0);
+
+  topRankings.forEach((item) => {
+    const clone = template.content.cloneNode(true);
+    clone.querySelector("img").src = item.imageUrl;
+    clone.querySelector("img").alt = item.title;
+    clone.querySelector(".rank-number").textContent = `#${item.rank}`;
+    clone.querySelector("h3").textContent = item.title;
+    clone.querySelector("p").textContent = `${item.genre || "Pick"} · ${Number(item.rating || 0).toFixed(1)}/10`;
+    list.append(clone);
+  });
 }
 
 async function renderPostView(postId) {
@@ -256,6 +283,7 @@ async function initHome() {
   if (!hasConfiguredFirebase()) {
     renderPostCards([]);
     showMessage($("#post-count"), "Add Firebase config");
+    renderHomeRecommendations([]);
     return;
   }
   const params = new URLSearchParams(location.search);
@@ -265,7 +293,9 @@ async function initHome() {
     return;
   }
   try {
-    setupPostFilters(await fetchPosts());
+    const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
+    setupPostFilters(posts);
+    renderHomeRecommendations(rankings);
   } catch (error) {
     showMessage($("#post-count"), "Firebase config needed", true);
     console.error(error);
@@ -311,11 +341,17 @@ async function initArchive() {
   });
 }
 
-function renderRankings(rankings, genre = "all") {
+function renderRankings(rankings, genre = "all", search = "") {
   const list = $("#rankings-list");
   const empty = $("#rankings-empty");
   const template = $("#ranking-template");
-  const filtered = genre === "all" ? rankings : rankings.filter((item) => item.genre === genre);
+  const term = search.trim().toLowerCase();
+  const filtered = rankings.filter((item) => {
+    const matchesGenre = genre === "all" || item.genre === genre;
+    const searchable = [item.title, item.genre, item.description].join(" ").toLowerCase();
+    const matchesSearch = !term || searchable.includes(term);
+    return matchesGenre && matchesSearch;
+  });
 
   list.innerHTML = "";
   empty.classList.toggle("hidden", filtered.length > 0);
@@ -342,25 +378,28 @@ function renderRankings(rankings, genre = "all") {
 
 async function initRankings() {
   const filter = $("#genre-filter");
+  const search = $("#recommendation-search");
   if (!hasConfiguredFirebase()) {
     $("#rankings-empty").classList.remove("hidden");
     $("#rankings-empty p").textContent = "Add your Firebase config and saved rankings will appear here.";
     return;
   }
-  const rankings = await fetchRankings();
-  const genres = [...new Set(rankings.map((item) => item.genre).filter(Boolean))].sort();
+  currentRankings = await fetchRankings();
+  const genres = [...new Set(currentRankings.map((item) => item.genre).filter(Boolean))].sort();
   genres.forEach((genre) => {
     const option = document.createElement("option");
     option.value = genre;
     option.textContent = genre;
     filter.append(option);
   });
-  renderRankings(rankings);
-  filter.addEventListener("change", () => renderRankings(rankings, filter.value));
+  const updateRankings = () => renderRankings(currentRankings, filter.value, search?.value || "");
+  updateRankings();
+  filter.addEventListener("change", updateRankings);
+  search?.addEventListener("input", updateRankings);
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
-    const liveRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
-    renderRankings(liveRankings, filter.value);
+    currentRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
+    updateRankings();
   });
 }
 
