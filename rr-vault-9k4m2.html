@@ -99,24 +99,28 @@
               <div class="section-heading tight">
                 <div>
                   <p class="eyebrow">Recommendations</p>
-                  <h2>Create or Edit Ranking</h2>
+                  <h2>Create or Edit Recommendation</h2>
                 </div>
-                <button class="ghost-button" id="reset-ranking-form" type="button">New ranking</button>
+                <button class="ghost-button" id="reset-ranking-form" type="button">New item</button>
               </div>
               <form id="ranking-form" class="stacked-form">
                 <input id="ranking-id" type="hidden">
+                <label>
+                  List title
+                  <input id="ranking-topic" placeholder="Best Sports Anime" required>
+                </label>
                 <div class="form-row">
                   <label>
-                    Rank number
+                    Position in list
                     <input id="ranking-rank" type="number" min="1" required>
                   </label>
                   <label>
-                    Rating out of 10
+                    Score
                     <input id="ranking-rating" type="number" min="0" max="10" step="0.1" required>
                   </label>
                 </div>
                 <label>
-                  Title
+                  Pick name
                   <input id="ranking-title" required>
                 </label>
                 <label>
@@ -124,16 +128,12 @@
                   <input id="ranking-image" required placeholder="Paste image, local file, or image URL">
                 </label>
                 <label>
-                  Topic title
-                  <input id="ranking-topic" placeholder="Best Sports Anime" required>
+                  Type
+                  <input id="ranking-genre" placeholder="Anime, Manga, Manhwa, Manhua, Sports">
                 </label>
                 <label>
-                  Genre / Type
-                  <input id="ranking-genre" placeholder="Sports / Tennis">
-                </label>
-                <label>
-                  Description
-                  <textarea id="ranking-description" rows="5" required placeholder="Why do you recommend it?"></textarea>
+                  Notes
+                  <textarea id="ranking-description" rows="5" required placeholder="Short text or bullet points are fine"></textarea>
                 </label>
                 <button class="primary-button" id="save-ranking-button" type="submit">Save recommendation</button>
               </form>

@@ -287,6 +287,17 @@ function parseMarkdown(content = "") {
     .join("");
 }
 
+function parseShortText(content = "") {
+  const escaped = escapeHtml(content.trim());
+  if (!escaped) return "";
+  const lines = escaped.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const bulletLines = lines.filter((line) => /^[-*]\s+/.test(line));
+  if (bulletLines.length && bulletLines.length === lines.length) {
+    return `<ul>${bulletLines.map((line) => `<li>${line.replace(/^[-*]\s+/, "")}</li>`).join("")}</ul>`;
+  }
+  return escaped.replaceAll("\n", "<br>");
+}
+
 async function fetchPosts() {
   const snapshot = await getDocs(query(collection(db, "posts"), orderBy("date", "desc")));
   return snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
@@ -316,8 +327,10 @@ function renderPostCards(posts, currentPage = 1) {
     const img = clone.querySelector("img");
     const tags = clone.querySelector(".tag-row");
     const action = clone.querySelector(".read-chip");
-    if (currentPage === 1 && index === 0 && posts.length > 1) card.classList.add("featured-post-card");
     if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
+    if (currentPage === 1 && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
+      card.classList.add("featured-post-card");
+    }
     link.href = post.href || `index.html?post=${post.id}-${slugify(post.title)}`;
     img.src = post.imageUrl;
     img.alt = post.title;
@@ -540,7 +553,7 @@ function renderRankings(rankings, topic = "all", search = "") {
       } else {
         chip.remove();
       }
-      clone.querySelector("p").textContent = item.description;
+      clone.querySelector(".recommendation-description").innerHTML = parseShortText(item.description);
       clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
       clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
       row.tabIndex = 0;
@@ -643,10 +656,18 @@ function resetPostForm() {
   $("#save-post-button").textContent = "Publish post";
 }
 
-function resetRankingForm() {
+function resetRankingForm(options = {}) {
   if (!$("#ranking-form")) return;
+  const previousTopic = $("#ranking-topic").value;
+  const previousType = $("#ranking-genre").value;
+  const previousRank = Number($("#ranking-rank").value || 0);
   $("#ranking-form").reset();
   $("#ranking-id").value = "";
+  if (options.keepList) {
+    $("#ranking-topic").value = previousTopic;
+    $("#ranking-genre").value = previousType;
+    $("#ranking-rank").value = previousRank ? previousRank + 1 : "";
+  }
   $("#save-ranking-button").textContent = "Save recommendation";
 }
 
@@ -727,24 +748,47 @@ function renderAdminPosts(posts) {
 function renderAdminRankings(rankings) {
   const list = $("#admin-rankings-list");
   list.innerHTML = "";
-  rankings.forEach((ranking) => {
-    const item = document.createElement("article");
-    item.className = "admin-list-item";
-    item.innerHTML = `
-      <div>
-        <h4>#${ranking.rank} ${escapeHtml(ranking.title)}</h4>
-      <p>${escapeHtml(getRecommendationTopic(ranking))} // ${escapeHtml(getRecommendationLabel(ranking))} // ${Number(ranking.rating).toFixed(1)}/10</p>
-      </div>
-      <div class="item-actions">
-        <button class="ghost-button edit" type="button">Edit</button>
-        <button class="ghost-button danger-button delete" type="button">Delete</button>
-      </div>
+  const groups = rankings.reduce((result, ranking) => {
+    const topic = getRecommendationTopic(ranking);
+    result[topic] = result[topic] || [];
+    result[topic].push(ranking);
+    return result;
+  }, {});
+
+  Object.entries(groups).forEach(([topic, items]) => {
+    const group = document.createElement("section");
+    group.className = "admin-recommendation-group";
+    group.innerHTML = `
+      <header>
+        <h3>${escapeHtml(topic)}</h3>
+        <span>${items.length} item${items.length === 1 ? "" : "s"}</span>
+      </header>
+      <div class="admin-recommendation-items"></div>
     `;
-    item.querySelector(".edit").addEventListener("click", () => fillRankingForm(ranking));
-    item.querySelector(".delete").addEventListener("click", async () => {
-      if (confirm(`Delete "${ranking.title}"?`)) await deleteDoc(doc(db, "rankings", ranking.id));
+    const groupItems = group.querySelector(".admin-recommendation-items");
+
+    [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0)).forEach((ranking) => {
+      const item = document.createElement("article");
+      item.className = "admin-list-item admin-recommendation-item";
+      item.innerHTML = `
+        <img src="${escapeHtml(ranking.imageUrl || "")}" alt="${escapeHtml(ranking.title || "")}">
+        <div>
+          <h4>#${ranking.rank} ${escapeHtml(ranking.title)}</h4>
+          <p>${escapeHtml(getRecommendationLabel(ranking))} · ${Number(ranking.rating || 0).toFixed(1)}/10</p>
+        </div>
+        <div class="item-actions">
+          <button class="ghost-button edit" type="button">Edit</button>
+          <button class="ghost-button danger-button delete" type="button">Delete</button>
+        </div>
+      `;
+      item.querySelector(".edit").addEventListener("click", () => fillRankingForm(ranking));
+      item.querySelector(".delete").addEventListener("click", async () => {
+        if (confirm(`Delete "${ranking.title}"?`)) await deleteDoc(doc(db, "rankings", ranking.id));
+      });
+      groupItems.append(item);
     });
-    list.append(item);
+
+    list.append(group);
   });
 }
 
@@ -784,7 +828,8 @@ function wireAdminData() {
       try {
         const id = $("#ranking-id").value;
         const data = getRankingFormData();
-        if (id) await setDoc(doc(db, "rankings", id), data, { merge: true });
+        const isEditing = Boolean(id);
+        if (isEditing) await setDoc(doc(db, "rankings", id), data, { merge: true });
         else await addDoc(collection(db, "rankings"), { ...data, createdAt: serverTimestamp() });
         showMessage($("#ranking-message"), "Recommendation saved.");
         saved = true;
@@ -792,7 +837,7 @@ function wireAdminData() {
         showMessage($("#ranking-message"), "Could not save the recommendation. Check Firestore rules.", true);
       } finally {
         setLoading(button, "Saving...", false);
-        if (saved) resetRankingForm();
+        if (saved) resetRankingForm({ keepList: !$("#ranking-id").value });
       }
     };
   }
