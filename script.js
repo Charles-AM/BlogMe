@@ -124,7 +124,10 @@ function buildRecommendationLists(rankings = []) {
   return Object.entries(groups).map(([topic, items]) => {
     const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
     const first = sortedItems[0] || {};
-    const labels = [...new Set(sortedItems.map(getRecommendationLabel).filter(Boolean))].slice(0, 3);
+    const labels = [...new Set(sortedItems
+      .map(getRecommendationLabel)
+      .filter((label) => label && label !== topic && label.length < 28)
+    )].slice(0, 3);
     const titles = sortedItems.slice(0, 4).map((item) => item.title).filter(Boolean).join(", ");
     return {
       id: slugify(topic),
@@ -312,7 +315,9 @@ function renderPostCards(posts, currentPage = 1) {
     const link = clone.querySelector("a");
     const img = clone.querySelector("img");
     const tags = clone.querySelector(".tag-row");
+    const action = clone.querySelector(".read-chip");
     if (currentPage === 1 && index === 0 && posts.length > 1) card.classList.add("featured-post-card");
+    if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
     link.href = post.href || `index.html?post=${post.id}-${slugify(post.title)}`;
     img.src = post.imageUrl;
     img.alt = post.title;
@@ -320,6 +325,7 @@ function renderPostCards(posts, currentPage = 1) {
     clone.querySelector("time").textContent = formatDate(post.date);
     clone.querySelector("h3").textContent = post.title;
     clone.querySelector("p").textContent = excerpt(post.content);
+    if (action) action.textContent = post.kind === "recommendation" ? "Open list" : "Read";
     normalizeTags(post.tags).slice(0, 3).forEach((tag) => {
       const item = document.createElement("span");
       item.textContent = tag;
