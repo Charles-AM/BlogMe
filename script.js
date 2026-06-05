@@ -131,7 +131,7 @@ function buildRecommendationLists(rankings = []) {
       kind: "recommendation",
       title: topic,
       imageUrl: first.imageUrl || "assets/regressed-ranker-hero.jpg",
-      content: `${sortedItems.length} ranked pick${sortedItems.length === 1 ? "" : "s"}${titles ? `: ${titles}` : ""}.`,
+      content: titles,
       date: getRecommendationDate(sortedItems),
       category: "Recommendations",
       tags: labels,
@@ -297,11 +297,9 @@ async function fetchRankings() {
 function renderPostCards(posts, currentPage = 1) {
   const grid = $("#posts-grid");
   const empty = $("#posts-empty");
-  const count = $("#post-count");
   const pagination = $("#pagination");
   const template = $("#post-card-template");
 
-  if (count) count.textContent = `${posts.length} recent item${posts.length === 1 ? "" : "s"}`;
   grid.innerHTML = "";
   pagination.innerHTML = "";
   empty.classList.toggle("hidden", posts.length > 0);
@@ -374,7 +372,6 @@ function applyPostFilters() {
 
 function setupPostFilters(posts) {
   homePosts = posts;
-  if ($("#hero-post-total")) $("#hero-post-total").textContent = posts.length;
   populatePostCategoryFilter(posts);
   $("#post-search")?.addEventListener("input", applyPostFilters);
   $("#post-category-filter")?.addEventListener("change", applyPostFilters);
@@ -384,13 +381,11 @@ function setupPostFilters(posts) {
 function renderHomeRecommendations(rankings) {
   const list = $("#home-recommendations-list");
   const empty = $("#home-recommendations-empty");
-  const total = $("#hero-rec-total");
   const template = $("#home-recommendation-template");
   if (!list || !template) return;
 
   const recommendationLists = buildRecommendationLists(rankings);
   const topRankings = recommendationLists.slice(0, 3);
-  if (total) total.textContent = recommendationLists.length;
   list.innerHTML = "";
   empty?.classList.toggle("hidden", topRankings.length > 0);
 
@@ -431,7 +426,6 @@ async function renderPostView(postId) {
 async function initHome() {
   if (!hasConfiguredFirebase()) {
     renderPostCards([]);
-    showMessage($("#post-count"), "Add Firebase config");
     renderHomeRecommendations([]);
     return;
   }
@@ -446,7 +440,6 @@ async function initHome() {
     setupPostFilters(sortFeedItems([...posts, ...buildRecommendationLists(rankings)]));
     renderHomeRecommendations(rankings);
   } catch (error) {
-    showMessage($("#post-count"), "Firebase config needed", true);
     console.error(error);
   }
 }
@@ -515,13 +508,39 @@ function renderRankings(rankings, topic = "all", search = "") {
   }, {});
 
   Object.entries(groups).forEach(([groupTitle, items]) => {
+    const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
+    const first = sortedItems[0] || {};
+    const groupLabels = [...new Set(sortedItems
+      .map(getRecommendationLabel)
+      .filter((label) => label && label !== groupTitle && label.length < 28)
+    )].slice(0, 4);
+    const featuredTitles = sortedItems.slice(0, 5).map((item) => item.title).filter(Boolean).join(" / ");
+    const topicUrl = `recommendations.html?topic=${encodeURIComponent(groupTitle)}`;
     const group = document.createElement("section");
     group.className = "recommendation-group reveal-card";
-    group.innerHTML = `<div class="recommendation-group-title"><p class="eyebrow">Ranked List</p><h3>${escapeHtml(groupTitle)}</h3></div><div class="recommendation-group-items"></div>`;
+    group.innerHTML = `
+      <a class="recommendation-group-title" href="${escapeHtml(topicUrl)}">
+        <img src="${escapeHtml(first.imageUrl || "assets/regressed-ranker-hero.jpg")}" alt="${escapeHtml(groupTitle)}">
+        <div>
+          <span class="topic-count">${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
+          <h3>${escapeHtml(groupTitle)}</h3>
+          <p>${escapeHtml(featuredTitles)}</p>
+          <div class="topic-tags"></div>
+        </div>
+      </a>
+      <div class="recommendation-group-items"></div>
+    `;
+    const topicTags = group.querySelector(".topic-tags");
+    groupLabels.forEach((label) => {
+      const tag = document.createElement("span");
+      tag.textContent = label;
+      topicTags.append(tag);
+    });
     const groupItems = group.querySelector(".recommendation-group-items");
 
-    items.forEach((item) => {
+    sortedItems.forEach((item) => {
       const clone = template.content.cloneNode(true);
+      const row = clone.querySelector(".ranking-row");
       clone.querySelector(".rank-number").textContent = `#${item.rank}`;
       clone.querySelector(".ranking-image").src = item.imageUrl;
       clone.querySelector(".ranking-image").alt = item.title;
@@ -530,6 +549,16 @@ function renderRankings(rankings, topic = "all", search = "") {
       clone.querySelector("p").textContent = item.description;
       clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
       clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+      row.setAttribute("aria-label", `${item.title} recommendation`);
+      row.addEventListener("click", () => row.classList.toggle("is-focused"));
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          row.classList.toggle("is-focused");
+        }
+      });
       groupItems.append(clone);
     });
 
