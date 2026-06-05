@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Anime, manga, and manhua recommendations from Regressed Ranker.">
+    <title>Recommendations | Regressed Ranker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body data-page="rankings">
+    <div class="site-shell">
+      <header class="public-header">
+        <a class="brand" href="index.html" aria-label="Regressed Ranker home">
+          <span class="brand-mark">RR</span>
+          <span>
+            <strong>Regressed Ranker</strong>
+            <small>Anime · Manga · Manhua · Ranker</small>
+          </span>
+        </a>
+        <nav class="public-nav" aria-label="Primary navigation">
+          <a href="index.html" data-step="01">Blog</a>
+          <a href="recommendations.html" data-step="02" aria-current="page">Recommendations</a>
+          <a href="archive.html" data-step="03">Archive</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="simple-page-heading">
+          <p class="eyebrow">Anime · Manga · Manhua · Ranker</p>
+          <h1>Recommendations</h1>
+        </section>
+
+        <section class="content-band">
+          <div class="leaderboard" id="rankings-list" aria-live="polite"></div>
+          <div class="empty-state hidden" id="rankings-empty">
+            <h3>No recommendations yet</h3>
+            <p>Saved recommendations will show up here automatically.</p>
+          </div>
+        </section>
+      </main>
+      <footer class="site-footer">
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </footer>
+    </div>
+
+    <template id="ranking-template">
+      <article class="ranking-row reveal-card">
+        <div class="rank-number"></div>
+        <div class="ranking-media">
+          <img class="ranking-image" alt="">
+        </div>
+        <div class="ranking-copy">
+          <div class="ranking-title-line">
+            <h3></h3>
+            <span class="genre-chip"></span>
+          </div>
+          <div class="recommendation-description"></div>
+          <div class="rating-track" aria-label="Rating out of 10">
+            <span></span>
+          </div>
+        </div>
+        <div class="ranking-actions">
+          <strong class="rating-value"></strong>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>

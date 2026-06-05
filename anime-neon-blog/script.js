@@ -1,4 +1,4 @@
-import { firebaseConfig } from "./firebase-config.js";
+import { adminUid, firebaseConfig } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore,
@@ -13,7 +13,6 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  increment
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth,
@@ -21,12 +20,21 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getDownloadURL,
+  getStorage,
+  ref as storageRef,
+  uploadBytesResumable
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 const page = document.body.dataset.page;
 const POSTS_PER_PAGE = 6;
+let homePosts = [];
+let currentRankings = [];
 
 const AI_REVIEW_PROMPT =
   "Write a short anime review (150-300 words) as a passionate human journalist. Use short sentences, occasional humor, genuine emotion, and a natural voice. Avoid bullet points, lists, and formal language. Make it feel personal, like a friend recommending an anime. Do not include any AI-sounding phrases such as 'as an AI' or 'in conclusion'. Just write the review.";
@@ -88,10 +96,74 @@ function normalizeTags(tags) {
     .filter(Boolean);
 }
 
+function getRecommendationTopic(item = {}) {
+  return item.topicTitle || item.listTitle || item.topic || item.genre || "Recommendations";
+}
+
+function getRecommendationLabel(item = {}) {
+  return item.genre || item.type || "Recommendation";
+}
+
+function getRecommendationDate(items = []) {
+  const dates = items
+    .map((item) => item.updatedAt || item.createdAt || item.date)
+    .filter(Boolean)
+    .map(toDate)
+    .filter((date) => !Number.isNaN(date.getTime()));
+  return dates.length ? new Date(Math.max(...dates.map((date) => date.getTime()))) : new Date();
+}
+
+function buildRecommendationLists(rankings = []) {
+  const groups = rankings.reduce((result, item) => {
+    const topic = getRecommendationTopic(item);
+    result[topic] = result[topic] || [];
+    result[topic].push(item);
+    return result;
+  }, {});
+
+  return Object.entries(groups).map(([topic, items]) => {
+    const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
+    const first = sortedItems[0] || {};
+    const labels = [...new Set(sortedItems
+      .map(getRecommendationLabel)
+      .filter((label) => label && label !== topic && label.length < 28)
+    )].slice(0, 3);
+    const titles = sortedItems.slice(0, 4).map((item) => item.title).filter(Boolean).join(", ");
+    return {
+      id: slugify(topic),
+      kind: "recommendation",
+      title: topic,
+      imageUrl: first.imageUrl || "assets/regressed-ranker-hero.jpg",
+      content: titles,
+      date: getRecommendationDate(sortedItems),
+      category: "Recommendations",
+      tags: labels,
+      items: sortedItems,
+      href: `recommendations.html?topic=${encodeURIComponent(topic)}`
+    };
+  }).sort((a, b) => toDate(b.date) - toDate(a.date));
+}
+
+function sortFeedItems(items = []) {
+  return [...items].sort((a, b) => toDate(b.date) - toDate(a.date));
+}
+
 function showMessage(node, message, isError = false) {
   if (!node) return;
   node.textContent = message;
   node.classList.toggle("error", isError);
+}
+
+function authErrorMessage(error) {
+  const messages = {
+    "auth/invalid-credential": "Firebase says those credentials do not match an admin user.",
+    "auth/user-not-found": "No Firebase Auth user exists for that email.",
+    "auth/wrong-password": "Firebase says the password is incorrect.",
+    "auth/invalid-email": "That email address is not valid.",
+    "auth/operation-not-allowed": "Email/password sign-in is not enabled in Firebase Authentication.",
+    "auth/network-request-failed": "Firebase could not be reached. Check your connection and local server."
+  };
+  return messages[error?.code] || `Sign-in failed: ${error?.code || "unknown error"}`;
 }
 
 function setLoading(button, loadingText, isLoading) {
@@ -104,6 +176,98 @@ function setLoading(button, loadingText, isLoading) {
     button.textContent = button.dataset.originalText || button.textContent;
     button.disabled = false;
   }
+}
+
+function imageExtension(file) {
+  const fallback = file.type === "image/png" ? "png" : "jpg";
+  return file.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || fallback;
+}
+
+function compressImage(file, maxWidth = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Only image files can be uploaded."));
+      return;
+    }
+
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(1, maxWidth / image.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Could not prepare image for upload."));
+          return;
+        }
+        resolve(new File([blob], file.name || "upload.jpg", { type: "image/jpeg" }));
+      }, "image/jpeg", quality);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not read the pasted image."));
+    };
+
+    image.src = objectUrl;
+  });
+}
+
+async function uploadPastedImage(file, folder, onProgress) {
+  if (!auth.currentUser) throw new Error("Sign in before uploading images.");
+  const uploadFile = await compressImage(file);
+  const extension = imageExtension(uploadFile);
+  const path = `uploads/${folder}/${auth.currentUser.uid}-${Date.now()}.${extension}`;
+  const imageReference = storageRef(storage, path);
+  const uploadTask = uploadBytesResumable(imageReference, uploadFile, { contentType: uploadFile.type || "image/jpeg" });
+
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        onProgress?.(percent);
+      },
+      reject,
+      async () => {
+        resolve(await getDownloadURL(uploadTask.snapshot.ref));
+      }
+    );
+  });
+}
+
+function setupImagePaste(input, folder, messageNode) {
+  if (!input) return;
+
+  input.addEventListener("paste", async (event) => {
+    const file = [...(event.clipboardData?.items || [])]
+      .find((item) => item.type.startsWith("image/"))
+      ?.getAsFile();
+
+    if (!file) return;
+    event.preventDefault();
+    input.placeholder = "Uploading pasted image...";
+    showMessage(messageNode, "Preparing image...");
+
+    try {
+      input.value = await uploadPastedImage(file, folder, (percent) => {
+        showMessage(messageNode, `Uploading image... ${percent}%`);
+      });
+      showMessage(messageNode, "Image uploaded. The URL is ready.");
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      const detail = error?.code ? ` (${error.code})` : "";
+      showMessage(messageNode, `Image upload failed${detail}. Check Firebase Storage setup and rules.`, true);
+    } finally {
+      input.placeholder = "Paste image, local file, or image URL";
+    }
+  });
 }
 
 function parseMarkdown(content = "") {
@@ -123,6 +287,17 @@ function parseMarkdown(content = "") {
     .join("");
 }
 
+function parseShortText(content = "") {
+  const escaped = escapeHtml(content.trim());
+  if (!escaped) return "";
+  const lines = escaped.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const bulletLines = lines.filter((line) => /^[-*]\s+/.test(line));
+  if (bulletLines.length && bulletLines.length === lines.length) {
+    return `<ul>${bulletLines.map((line) => `<li>${line.replace(/^[-*]\s+/, "")}</li>`).join("")}</ul>`;
+  }
+  return escaped.replaceAll("\n", "<br>");
+}
+
 async function fetchPosts() {
   const snapshot = await getDocs(query(collection(db, "posts"), orderBy("date", "desc")));
   return snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
@@ -136,29 +311,34 @@ async function fetchRankings() {
 function renderPostCards(posts, currentPage = 1) {
   const grid = $("#posts-grid");
   const empty = $("#posts-empty");
-  const count = $("#post-count");
   const pagination = $("#pagination");
   const template = $("#post-card-template");
 
-  if (count) count.textContent = `${posts.length} saved post${posts.length === 1 ? "" : "s"}`;
   grid.innerHTML = "";
   pagination.innerHTML = "";
   empty.classList.toggle("hidden", posts.length > 0);
 
   const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
   const start = (currentPage - 1) * POSTS_PER_PAGE;
-  posts.slice(start, start + POSTS_PER_PAGE).forEach((post) => {
+  posts.slice(start, start + POSTS_PER_PAGE).forEach((post, index) => {
     const clone = template.content.cloneNode(true);
+    const card = clone.querySelector(".post-card");
     const link = clone.querySelector("a");
     const img = clone.querySelector("img");
     const tags = clone.querySelector(".tag-row");
-    link.href = `index.html?post=${post.id}-${slugify(post.title)}`;
+    const action = clone.querySelector(".read-chip");
+    if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
+    if (currentPage === 1 && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
+      card.classList.add("featured-post-card");
+    }
+    link.href = post.href || `index.html?post=${post.id}-${slugify(post.title)}`;
     img.src = post.imageUrl;
     img.alt = post.title;
     clone.querySelector(".category-badge").textContent = post.category || "Anime";
     clone.querySelector("time").textContent = formatDate(post.date);
     clone.querySelector("h3").textContent = post.title;
     clone.querySelector("p").textContent = excerpt(post.content);
+    if (action) action.textContent = post.kind === "recommendation" ? "Open list" : "Read";
     normalizeTags(post.tags).slice(0, 3).forEach((tag) => {
       const item = document.createElement("span");
       item.textContent = tag;
@@ -177,11 +357,74 @@ function renderPostCards(posts, currentPage = 1) {
   }
 }
 
+function populatePostCategoryFilter(posts) {
+  const filter = $("#post-category-filter");
+  if (!filter) return;
+  const current = filter.value;
+  const categories = [...new Set(posts.map((post) => post.category).filter(Boolean))].sort();
+  filter.innerHTML = '<option value="all">All categories</option>';
+  categories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    filter.append(option);
+  });
+  filter.value = categories.includes(current) ? current : "all";
+}
+
+function applyPostFilters() {
+  const search = ($("#post-search")?.value || "").trim().toLowerCase();
+  const category = $("#post-category-filter")?.value || "all";
+  const filtered = homePosts.filter((post) => {
+    const searchable = [
+      post.title,
+      post.category,
+      post.content,
+      normalizeTags(post.tags).join(" ")
+    ].join(" ").toLowerCase();
+    const matchesSearch = !search || searchable.includes(search);
+    const matchesCategory = category === "all" || post.category === category;
+    return matchesSearch && matchesCategory;
+  });
+  renderPostCards(filtered);
+}
+
+function setupPostFilters(posts) {
+  homePosts = posts;
+  populatePostCategoryFilter(posts);
+  $("#post-search")?.addEventListener("input", applyPostFilters);
+  $("#post-category-filter")?.addEventListener("change", applyPostFilters);
+  applyPostFilters();
+}
+
+function renderHomeRecommendations(rankings) {
+  const list = $("#home-recommendations-list");
+  const empty = $("#home-recommendations-empty");
+  const template = $("#home-recommendation-template");
+  if (!list || !template) return;
+
+  const recommendationLists = buildRecommendationLists(rankings);
+  const topRankings = recommendationLists.slice(0, 3);
+  list.innerHTML = "";
+  empty?.classList.toggle("hidden", topRankings.length > 0);
+
+  topRankings.forEach((item) => {
+    const clone = template.content.cloneNode(true);
+    clone.querySelector("img").src = item.imageUrl;
+    clone.querySelector("img").alt = item.title;
+    clone.querySelector(".rank-number").textContent = `${item.items.length} picks`;
+    clone.querySelector("h3").textContent = item.title;
+    clone.querySelector("p").textContent = item.content;
+    clone.querySelector(".mini-rec-card").href = item.href;
+    list.append(clone);
+  });
+}
+
 async function renderPostView(postId) {
   const snap = await getDoc(doc(db, "posts", postId));
   const main = $("main");
   if (!snap.exists()) {
-    main.innerHTML = '<section class="empty-state"><h3>Post not found</h3><p>This dispatch may have moved or been deleted.</p></section>';
+    main.innerHTML = '<section class="empty-state"><h3>Post not found</h3><p>This post may have moved or been deleted.</p></section>';
     return;
   }
   const post = { id: snap.id, ...snap.data() };
@@ -202,7 +445,7 @@ async function renderPostView(postId) {
 async function initHome() {
   if (!hasConfiguredFirebase()) {
     renderPostCards([]);
-    showMessage($("#post-count"), "Add Firebase config");
+    renderHomeRecommendations([]);
     return;
   }
   const params = new URLSearchParams(location.search);
@@ -212,9 +455,10 @@ async function initHome() {
     return;
   }
   try {
-    renderPostCards(await fetchPosts());
+    const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
+    setupPostFilters(sortFeedItems([...posts, ...buildRecommendationLists(rankings)]));
+    renderHomeRecommendations(rankings);
   } catch (error) {
-    showMessage($("#post-count"), "Firebase config needed", true);
     console.error(error);
   }
 }
@@ -228,11 +472,12 @@ async function initArchive() {
     empty.querySelector("p").textContent = "Add your Firebase config and published posts will appear here.";
     return;
   }
-  const posts = await fetchPosts();
-  empty.classList.toggle("hidden", posts.length > 0);
+  const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
+  const archiveItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
+  empty.classList.toggle("hidden", archiveItems.length > 0);
   archive.innerHTML = "";
 
-  const groups = posts.reduce((result, post) => {
+  const groups = archiveItems.reduce((result, post) => {
     const key = formatMonth(post.date);
     result[key] = result[key] || [];
     result[key].push(post);
@@ -247,7 +492,7 @@ async function initArchive() {
     monthPosts.forEach((post) => {
       const li = document.createElement("li");
       li.innerHTML = `
-        <a href="index.html?post=${post.id}-${slugify(post.title)}">
+        <a href="${escapeHtml(post.href || `index.html?post=${post.id}-${slugify(post.title)}`)}">
           <time>${formatDate(post.date)}</time>
           <strong>${escapeHtml(post.title)}</strong>
         </a>
@@ -258,56 +503,136 @@ async function initArchive() {
   });
 }
 
-function renderRankings(rankings, genre = "all") {
+function renderRankings(rankings, topic = "all", search = "") {
   const list = $("#rankings-list");
   const empty = $("#rankings-empty");
   const template = $("#ranking-template");
-  const filtered = genre === "all" ? rankings : rankings.filter((item) => item.genre === genre);
+  const term = search.trim().toLowerCase();
+  const filtered = rankings.filter((item) => {
+    const topicTitle = getRecommendationTopic(item);
+    const matchesTopic = topic === "all" || topicTitle === topic;
+    const searchable = [item.title, topicTitle, item.genre, item.description].join(" ").toLowerCase();
+    const matchesSearch = !term || searchable.includes(term);
+    return matchesTopic && matchesSearch;
+  });
 
   list.innerHTML = "";
   empty.classList.toggle("hidden", filtered.length > 0);
 
-  filtered.forEach((item) => {
-    const clone = template.content.cloneNode(true);
-    clone.querySelector(".rank-number").textContent = `#${item.rank}`;
-    clone.querySelector(".ranking-image").src = item.imageUrl;
-    clone.querySelector(".ranking-image").alt = item.title;
-    clone.querySelector("h3").textContent = item.title;
-    clone.querySelector(".genre-chip").textContent = item.genre;
-    clone.querySelector("p").textContent = item.description;
-    clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
-    clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
-    const likeButton = clone.querySelector(".like-button");
-    likeButton.querySelector("b").textContent = item.likes || 0;
-    likeButton.addEventListener("click", async () => {
-      likeButton.disabled = true;
-      await setDoc(doc(db, "rankings", item.id), { likes: increment(1) }, { merge: true });
+  const groups = filtered.reduce((result, item) => {
+    const key = getRecommendationTopic(item);
+    result[key] = result[key] || [];
+    result[key].push(item);
+    return result;
+  }, {});
+
+  Object.entries(groups).forEach(([groupTitle, items]) => {
+    const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
+    const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
+    const summaryText = summaryTitles.length
+      ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
+      : "Open the list to view the full recommendations.";
+    const group = document.createElement("section");
+    group.className = "recommendation-group reveal-card";
+    group.innerHTML = `
+      <header class="recommendation-group-title">
+        <div>
+          <h2>${escapeHtml(groupTitle)}</h2>
+          <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
+        </div>
+        <div class="recommendation-group-meta">
+          <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
+          <button class="recommendation-group-toggle" type="button" aria-expanded="false">Open list</button>
+        </div>
+      </header>
+      <div class="recommendation-group-items hidden"></div>
+    `;
+    const groupItems = group.querySelector(".recommendation-group-items");
+    const toggle = group.querySelector(".recommendation-group-toggle");
+
+    const setExpanded = (expanded) => {
+      group.classList.toggle("is-expanded", expanded);
+      groupItems.classList.toggle("hidden", !expanded);
+      toggle.textContent = expanded ? "Close list" : "Open list";
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    };
+
+    toggle.addEventListener("click", () => setExpanded(groupItems.classList.contains("hidden")));
+
+    sortedItems.forEach((item) => {
+      const clone = template.content.cloneNode(true);
+      const row = clone.querySelector(".ranking-row");
+      clone.querySelector(".rank-number").textContent = `#${item.rank}`;
+      clone.querySelector(".ranking-image").src = item.imageUrl;
+      clone.querySelector(".ranking-image").alt = item.title;
+      clone.querySelector("h3").textContent = item.title;
+      const label = getRecommendationLabel(item);
+      const chip = clone.querySelector(".genre-chip");
+      if (label && label !== groupTitle && label.length < 28) {
+        chip.textContent = label;
+      } else {
+        chip.remove();
+      }
+      clone.querySelector(".recommendation-description").innerHTML = parseShortText(item.description);
+      clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
+      clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+      row.setAttribute("aria-label", `${item.title} recommendation`);
+      row.addEventListener("click", () => row.classList.toggle("is-focused"));
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          row.classList.toggle("is-focused");
+        }
+      });
+      groupItems.append(clone);
     });
-    list.append(clone);
+
+    list.append(group);
   });
 }
 
 async function initRankings() {
   const filter = $("#genre-filter");
+  const search = $("#recommendation-search");
+  const params = new URLSearchParams(location.search);
+  const requestedTopic = params.get("topic");
   if (!hasConfiguredFirebase()) {
     $("#rankings-empty").classList.remove("hidden");
     $("#rankings-empty p").textContent = "Add your Firebase config and saved rankings will appear here.";
     return;
   }
-  const rankings = await fetchRankings();
-  const genres = [...new Set(rankings.map((item) => item.genre).filter(Boolean))].sort();
-  genres.forEach((genre) => {
-    const option = document.createElement("option");
-    option.value = genre;
-    option.textContent = genre;
-    filter.append(option);
-  });
-  renderRankings(rankings);
-  filter.addEventListener("change", () => renderRankings(rankings, filter.value));
+  currentRankings = await fetchRankings();
+  const populateTopics = () => {
+    if (!filter) return;
+    const current = filter.value;
+    const topics = [...new Set(currentRankings.map(getRecommendationTopic).filter(Boolean))].sort();
+    filter.innerHTML = '<option value="all">All topics</option>';
+    topics.forEach((topic) => {
+      const option = document.createElement("option");
+      option.value = topic;
+      option.textContent = topic;
+      filter.append(option);
+    });
+    filter.value = topics.includes(current) ? current : "all";
+  };
+  populateTopics();
+  if (filter && requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
+    filter.value = requestedTopic;
+  }
+  const updateRankings = () => renderRankings(currentRankings, filter?.value || requestedTopic || "all", search?.value || "");
+  updateRankings();
+  filter?.addEventListener("change", updateRankings);
+  search?.addEventListener("input", updateRankings);
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
-    const liveRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
-    renderRankings(liveRankings, filter.value);
+    currentRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
+    populateTopics();
+    if (filter && requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
+      filter.value = requestedTopic;
+    }
+    updateRankings();
   });
 }
 
@@ -322,7 +647,8 @@ function wireAdminAuth() {
       await signInWithEmailAndPassword(auth, $("#login-email").value, $("#login-password").value);
       showMessage($("#login-message"), "");
     } catch (error) {
-      showMessage($("#login-message"), "Sign-in failed. Check the email and password.", true);
+      console.error("Firebase sign-in failed:", error);
+      showMessage($("#login-message"), authErrorMessage(error), true);
     } finally {
       setLoading(button, "Signing in...", false);
     }
@@ -330,10 +656,16 @@ function wireAdminAuth() {
 
   logoutButton.addEventListener("click", () => signOut(auth));
   onAuthStateChanged(auth, (user) => {
-    $("#login-panel").classList.toggle("hidden", Boolean(user));
-    $("#admin-dashboard").classList.toggle("hidden", !user);
-    logoutButton.classList.toggle("hidden", !user);
-    if (user) wireAdminData();
+    const allowedUser = Boolean(user) && (!adminUid || user.uid === adminUid);
+    if (user && !allowedUser) {
+      signOut(auth);
+      showMessage($("#login-message"), "This account is not allowed to manage this site.", true);
+      return;
+    }
+    $("#login-panel").classList.toggle("hidden", allowedUser);
+    $("#admin-dashboard").classList.toggle("hidden", !allowedUser);
+    logoutButton.classList.toggle("hidden", !allowedUser);
+    if (allowedUser) wireAdminData();
   });
 }
 
@@ -344,10 +676,19 @@ function resetPostForm() {
   $("#save-post-button").textContent = "Publish post";
 }
 
-function resetRankingForm() {
+function resetRankingForm(options = {}) {
+  if (!$("#ranking-form")) return;
+  const previousTopic = $("#ranking-topic").value;
+  const previousType = $("#ranking-genre").value;
+  const previousRank = Number($("#ranking-rank").value || 0);
   $("#ranking-form").reset();
   $("#ranking-id").value = "";
-  $("#save-ranking-button").textContent = "Save ranking";
+  if (options.keepList) {
+    $("#ranking-topic").value = previousTopic;
+    $("#ranking-genre").value = previousType;
+    $("#ranking-rank").value = previousRank ? previousRank + 1 : "";
+  }
+  $("#save-ranking-button").textContent = "Save recommendation";
 }
 
 function getPostFormData() {
@@ -369,6 +710,7 @@ function getRankingFormData() {
     imageUrl: $("#ranking-image").value.trim(),
     description: $("#ranking-description").value.trim(),
     rating: Number($("#ranking-rating").value),
+    topicTitle: $("#ranking-topic").value.trim(),
     genre: $("#ranking-genre").value.trim(),
     updatedAt: serverTimestamp()
   };
@@ -393,8 +735,9 @@ function fillRankingForm(item) {
   $("#ranking-image").value = item.imageUrl || "";
   $("#ranking-description").value = item.description || "";
   $("#ranking-rating").value = item.rating || "";
+  $("#ranking-topic").value = getRecommendationTopic(item);
   $("#ranking-genre").value = item.genre || "";
-  $("#save-ranking-button").textContent = "Update ranking";
+  $("#save-ranking-button").textContent = "Update recommendation";
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -425,31 +768,56 @@ function renderAdminPosts(posts) {
 function renderAdminRankings(rankings) {
   const list = $("#admin-rankings-list");
   list.innerHTML = "";
-  rankings.forEach((ranking) => {
-    const item = document.createElement("article");
-    item.className = "admin-list-item";
-    item.innerHTML = `
-      <div>
-        <h4>#${ranking.rank} ${escapeHtml(ranking.title)}</h4>
-        <p>${escapeHtml(ranking.genre)} // ${Number(ranking.rating).toFixed(1)}/10</p>
-      </div>
-      <div class="item-actions">
-        <button class="ghost-button edit" type="button">Edit</button>
-        <button class="ghost-button danger-button delete" type="button">Delete</button>
-      </div>
+  const groups = rankings.reduce((result, ranking) => {
+    const topic = getRecommendationTopic(ranking);
+    result[topic] = result[topic] || [];
+    result[topic].push(ranking);
+    return result;
+  }, {});
+
+  Object.entries(groups).forEach(([topic, items]) => {
+    const group = document.createElement("section");
+    group.className = "admin-recommendation-group";
+    group.innerHTML = `
+      <header>
+        <h3>${escapeHtml(topic)}</h3>
+        <span>${items.length} item${items.length === 1 ? "" : "s"}</span>
+      </header>
+      <div class="admin-recommendation-items"></div>
     `;
-    item.querySelector(".edit").addEventListener("click", () => fillRankingForm(ranking));
-    item.querySelector(".delete").addEventListener("click", async () => {
-      if (confirm(`Delete "${ranking.title}"?`)) await deleteDoc(doc(db, "rankings", ranking.id));
+    const groupItems = group.querySelector(".admin-recommendation-items");
+
+    [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0)).forEach((ranking) => {
+      const item = document.createElement("article");
+      item.className = "admin-list-item admin-recommendation-item";
+      item.innerHTML = `
+        <img src="${escapeHtml(ranking.imageUrl || "")}" alt="${escapeHtml(ranking.title || "")}">
+        <div>
+          <h4>#${ranking.rank} ${escapeHtml(ranking.title)}</h4>
+          <p>${escapeHtml(getRecommendationLabel(ranking))} · ${Number(ranking.rating || 0).toFixed(1)}/10</p>
+        </div>
+        <div class="item-actions">
+          <button class="ghost-button edit" type="button">Edit</button>
+          <button class="ghost-button danger-button delete" type="button">Delete</button>
+        </div>
+      `;
+      item.querySelector(".edit").addEventListener("click", () => fillRankingForm(ranking));
+      item.querySelector(".delete").addEventListener("click", async () => {
+        if (confirm(`Delete "${ranking.title}"?`)) await deleteDoc(doc(db, "rankings", ranking.id));
+      });
+      groupItems.append(item);
     });
-    list.append(item);
+
+    list.append(group);
   });
 }
 
 function wireAdminData() {
   resetPostForm();
   $("#reset-post-form").onclick = resetPostForm;
-  $("#reset-ranking-form").onclick = resetRankingForm;
+  if ($("#reset-ranking-form")) $("#reset-ranking-form").onclick = resetRankingForm;
+  setupImagePaste($("#post-image"), "posts", $("#post-message"));
+  setupImagePaste($("#ranking-image"), "recommendations", $("#ranking-message"));
 
   $("#post-form").onsubmit = async (event) => {
     event.preventDefault();
@@ -471,33 +839,38 @@ function wireAdminData() {
     }
   };
 
-  $("#ranking-form").onsubmit = async (event) => {
-    event.preventDefault();
-    const button = $("#save-ranking-button");
-    let saved = false;
-    setLoading(button, "Saving...", true);
-    try {
-      const id = $("#ranking-id").value;
-      const data = getRankingFormData();
-      if (id) await setDoc(doc(db, "rankings", id), data, { merge: true });
-      else await addDoc(collection(db, "rankings"), { ...data, likes: 0, createdAt: serverTimestamp() });
-      showMessage($("#ranking-message"), "Ranking saved.");
-      saved = true;
-    } catch (error) {
-      showMessage($("#ranking-message"), "Could not save the ranking. Check Firestore rules.", true);
-    } finally {
-      setLoading(button, "Saving...", false);
-      if (saved) resetRankingForm();
-    }
-  };
+  if ($("#ranking-form")) {
+    $("#ranking-form").onsubmit = async (event) => {
+      event.preventDefault();
+      const button = $("#save-ranking-button");
+      let saved = false;
+      setLoading(button, "Saving...", true);
+      try {
+        const id = $("#ranking-id").value;
+        const data = getRankingFormData();
+        const isEditing = Boolean(id);
+        if (isEditing) await setDoc(doc(db, "rankings", id), data, { merge: true });
+        else await addDoc(collection(db, "rankings"), { ...data, createdAt: serverTimestamp() });
+        showMessage($("#ranking-message"), "Recommendation saved.");
+        saved = true;
+      } catch (error) {
+        showMessage($("#ranking-message"), "Could not save the recommendation. Check Firestore rules.", true);
+      } finally {
+        setLoading(button, "Saving...", false);
+        if (saved) resetRankingForm({ keepList: !$("#ranking-id").value });
+      }
+    };
+  }
 
   onSnapshot(query(collection(db, "posts"), orderBy("date", "desc")), (snapshot) => {
     renderAdminPosts(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
   });
-  onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
-    renderAdminRankings(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
-  });
-  wireAiDraft();
+  if ($("#admin-rankings-list")) {
+    onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
+      renderAdminRankings(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
+    });
+  }
+  if ($("#ai-form")) wireAiDraft();
 }
 
 async function generateGeminiDraft(apiKey, topic) {
@@ -681,9 +1054,9 @@ async function seedDemoData() {
     await addDoc(collection(db, "rankings"), {
       rank: index + 1,
       title,
+      topicTitle: "Top Anime Rankings",
       genre,
       rating,
-      likes: 0,
       imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=900&q=80",
       description: `${title} earns its spot with unforgettable scenes, clean momentum, and the kind of emotional grip that ruins your sleep schedule.`,
       createdAt: serverTimestamp(),

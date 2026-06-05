@@ -1,71 +1,34 @@
-# Neon Frames Anime Blog
+# Regressed Ranker
 
-A production-ready static anime blog with a cyberpunk UI, Firebase Firestore persistence, Firebase Authentication for a private owner console, rankings with public likes, and an editable AI draft generator.
+A light, clean Firebase blog for anime, manga, manhua, and ranking-style posts.
 
-## Files
+## Pages
 
-- `index.html` - public blog grid and full post view
-- `rankings.html` - public anime leaderboard
-- `archive.html` - chronological post archive
-- `admin.html` - private owner console, rename before deploying
-- `style.css` - responsive neon/glassmorphism design
-- `script.js` - Firebase reads/writes, rendering, likes, CRUD, AI draft calls
-- `firebase-config.js` - your Firebase web config
+- `index.html` - public blog homepage and full post view
+- `recommendations.html` - ranked anime, manga, and manhua recommendations
+- `archive.html` - public archive grouped by month and year
+- `rr-vault-9k4m2.html` - private admin dashboard, not linked publicly
+- `style.css` - white gradient responsive UI
+- `script.js` - Firebase, rendering, post CRUD, archive logic
+- `firebase-config.js` - Firebase web app config
+- `netlify.toml` - Netlify static hosting config
+- `assets/regressed-ranker-hero.jpg` - homepage banner image
 
-## 1. Create a Firebase Project
+## Firebase Setup
 
-1. Go to [Firebase Console](https://console.firebase.google.com/).
-2. Click **Add project**.
-3. Name it, for example `neon-frames-blog`.
-4. Google Analytics is optional.
-5. Open the project.
+1. Open [Firebase Console](https://console.firebase.google.com/).
+2. Create or open your project.
+3. Go to **Build > Firestore Database**.
+4. Create the database in production mode.
+5. Go to **Build > Authentication**.
+6. Enable **Email/Password**.
+7. Go to **Users** and create one admin user.
+8. Go to **Build > Storage**.
+9. Create Firebase Storage so pasted admin images can upload.
 
-## 2. Add a Web App and Copy Config
+## Firestore Rules
 
-1. In Firebase Console, open **Project settings**.
-2. Under **Your apps**, click the web icon.
-3. Register the app.
-4. Copy the Firebase config object.
-5. Paste the values into `firebase-config.js`.
-
-```js
-export const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
-};
-```
-
-## 3. Enable Firestore
-
-1. In Firebase Console, open **Build > Firestore Database**.
-2. Click **Create database**.
-3. Start in production mode.
-4. Choose a region near your audience.
-
-Collections are created automatically when you save your first post or ranking:
-
-- `posts`
-- `rankings`
-
-## 4. Enable Authentication
-
-1. Open **Build > Authentication**.
-2. Click **Get started**.
-3. Enable **Email/Password**.
-4. Go to **Users**.
-5. Click **Add user**.
-6. Create your one owner/admin account.
-7. Copy that user's UID if you want stricter Firestore rules.
-
-## 5. Firestore Security Rules
-
-Use public reads so anyone can visit the blog. Use authenticated writes for the owner console.
-
-Basic one-admin-site rules:
+Public visitors can read posts. Only a signed-in admin can write posts.
 
 ```txt
 rules_version = '2';
@@ -79,16 +42,30 @@ service cloud.firestore {
 
     match /rankings/{rankingId} {
       allow read: if true;
-      allow create, update: if
-        request.auth != null ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
-      allow delete: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }
 ```
 
-Stricter owner-only write rules:
+## Storage Rules
+
+Admin image paste/upload uses Firebase Storage. Public visitors can view images. Only signed-in admins can upload.
+
+```txt
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /uploads/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
+
+For stricter owner-only writes, use your Firebase Auth UID:
 
 ```txt
 rules_version = '2';
@@ -106,122 +83,129 @@ service cloud.firestore {
 
     match /rankings/{rankingId} {
       allow read: if true;
-      allow create, delete: if isOwner();
-      allow update: if isOwner() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow write: if isOwner();
     }
   }
 }
 ```
 
-The public like button increments only the `likes` field.
+You can also paste that same UID into `adminUid` in `firebase-config.js`. That makes the admin page sign out any other authenticated user immediately. Firestore rules are still the real security layer.
 
-## 6. Rename the Admin Page
+## Admin Page
 
-The public site never links to the admin page. Before deploying, rename:
+Open:
+
+```txt
+rr-vault-9k4m2.html
+```
+
+Sign in with your Firebase admin user. From there you can:
+
+- create posts
+- edit posts
+- delete posts
+- create recommendations
+- edit recommendations
+- delete recommendations
+- set title, image, date, category, tags, and content
+
+For image fields, you can either paste an image URL or click the field and paste an image from your clipboard. Pasted images upload to Firebase Storage and the URL is filled automatically.
+
+The public site does not link to the private admin page.
+
+You can rename it again before going live:
 
 ```bash
-mv admin.html admin-xyz789.html
+mv rr-vault-9k4m2.html your-private-name.html
 ```
 
-Use your own hard-to-guess filename. Bookmark it privately.
+## Local Preview
 
-## 7. Seed Demo Data
-
-`script.js` includes a commented `seedDemoData()` helper at the bottom. To use it:
-
-1. Configure Firebase.
-2. Open your renamed admin page.
-3. Sign in.
-4. Open the browser console.
-5. Copy the commented function from `script.js`, paste it into the console, and run:
-
-```js
-seedDemoData();
-```
-
-It creates 5 sample posts and 10 ranking entries.
-
-## 8. AI Draft Generator
-
-The AI draft tool lives only on the private admin page.
-
-Workflow:
-
-1. Sign in.
-2. Choose **Gemini** or **OpenAI**.
-3. Paste your API key.
-4. Enter a topic, such as `Why Frieren made me cry`.
-5. Click **Generate draft**.
-6. Edit the preview freely.
-7. Click **Publish** only when it is ready.
-
-Nothing is posted automatically.
-
-The exact prompt in `script.js` enforces short sentences, emotion, humor, no bullet points, no AI clichés, and a 150-300 word review style.
-
-Cost note:
-
-- Gemini has a free tier through [Google AI Studio](https://aistudio.google.com/app/apikey).
-- OpenAI usually costs about `$0.002-$0.01` per short draft, depending on model and token count.
-
-API key note:
-
-The key is stored in `localStorage` for convenience. That is acceptable for a personal owner-only tool, but it is not a secure multi-user production secret store.
-
-## 9. Deploy to Netlify
-
-Drag-and-drop:
-
-1. Rename `admin.html`.
-2. Go to [Netlify Drop](https://app.netlify.com/drop).
-3. Drag the entire project folder into the page.
-4. Netlify gives you a live URL.
-
-Netlify CLI:
-
-```bash
-npm install -g netlify-cli
-netlify deploy --dir .
-netlify deploy --prod --dir .
-```
-
-Run those commands from this folder.
-
-## 10. Local Preview
-
-Because this uses ES modules, preview it with a local static server:
+Run this inside the project folder:
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Then open:
+Open:
 
 ```txt
 http://localhost:8080
 ```
 
-## 11. Daily Use
+Admin:
 
-Posts:
+```txt
+http://localhost:8080/rr-vault-9k4m2.html
+```
 
-1. Open the secret admin page.
+## Deploy to Netlify
+
+### GitHub Method
+
+1. Push this repo to GitHub.
+2. Go to [Netlify](https://app.netlify.com/).
+3. Click **Add new site > Import an existing project**.
+4. Choose GitHub.
+5. Select the `BlogMe` repo.
+6. Use these settings:
+   - Build command: leave blank
+   - Publish directory: `.`
+7. Deploy.
+
+### Drag-and-Drop Method
+
+1. Keep the private admin page name unlinked, or rename it again.
+2. Go to [Netlify Drop](https://app.netlify.com/drop).
+3. Drag the project folder into the page.
+
+## Custom Domain
+
+After the site is deployed on Netlify:
+
+1. Open the site in Netlify.
+2. Go to **Domain management**.
+3. Click **Add a domain**.
+4. Enter your domain, for example `regressedranker.com`.
+5. If you buy the domain through Netlify, Netlify handles DNS automatically.
+6. If you buy it elsewhere, add the DNS records Netlify shows you.
+7. Wait for Netlify to issue the free HTTPS certificate.
+
+Recommended domain style:
+
+- `regressedranker.com`
+- `regressedranker.net`
+- `regressedranker.blog`
+
+## Posting
+
+1. Open the private admin page.
 2. Sign in.
-3. Fill in title, image URL, date, category, tags, and content.
+3. Fill in the blog post form.
 4. Click **Publish post**.
-5. Existing posts can be edited or deleted in **Existing Content**.
+5. The post appears on `index.html`.
+6. The post also appears in `archive.html`.
 
-Rankings:
+## Recommendations
 
-1. Fill in rank number, title, image URL, description, rating, and genre.
-2. Click **Save ranking**.
-3. Rankings can be edited or deleted later.
-4. Public visitors can like rankings without signing in.
+1. Open the private admin page.
+2. Sign in.
+3. Fill in the recommendation form.
+4. Use **Topic title** as the recommendation post title, for example `Best Sports Anime`.
+5. Use the same topic title for every item that should appear under that one list.
+6. Use **Genre / Type** for the individual item, for example `Soccer`, `Tennis`, `Boxing`, or `Basketball`.
+7. Click **Save recommendation**.
+8. The topic appears as one recommendation post on the homepage and `recommendations.html`, with the saved items grouped inside it.
 
-Public pages:
+Example:
 
-- `index.html` shows paginated blog cards.
-- `rankings.html` shows filterable rankings.
-- `archive.html` groups every post by month/year.
+```txt
+Topic title: Best Sports Anime
+Genre / Type: Soccer
+Rank number: 1
+Title: Ao Ashi
+Image URL: ...
+Description: ...
+```
 
+To create another recommendation post, use a different **Topic title**, for example `Best Romance Anime`.
