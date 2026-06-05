@@ -880,7 +880,7 @@ time {
 
 .ranking-row {
   display: grid;
-  grid-template-columns: 54px minmax(128px, 170px) minmax(0, 1fr) auto;
+  grid-template-columns: 54px minmax(0, 170px) minmax(0, 1fr) auto;
   gap: 14px;
   align-items: stretch;
   padding: 12px;
@@ -935,11 +935,17 @@ time {
   min-width: 0;
 }
 
+.ranking-media,
+.ranking-copy,
+.ranking-actions {
+  min-width: 0;
+}
+
 .ranking-title-line {
   display: flex;
   flex-wrap: wrap;
   gap: 9px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .rating-track {
@@ -1320,13 +1326,26 @@ select:focus {
   }
 
   .ranking-row {
-    grid-template-columns: 48px minmax(120px, 150px) minmax(0, 1fr);
+    grid-template-columns: 1fr;
+  }
+
+  .recommendation-group-title {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .recommendation-group-meta {
+    justify-items: start;
+  }
+
+  .ranking-media {
+    width: 100%;
+    aspect-ratio: 16 / 10;
   }
 
   .ranking-actions {
-    grid-column: 3;
-    grid-template-columns: 90px 1fr;
-    align-items: center;
+    justify-items: start;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1437,6 +1456,10 @@ select:focus {
   .recommendation-group-title {
     align-items: start;
     flex-direction: column;
+  }
+
+  .recommendation-group-meta {
+    width: 100%;
   }
 
   .ranking-row {
