@@ -908,7 +908,7 @@ time {
 .ranking-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 5 / 3;
   overflow: hidden;
   background: var(--soft);
 }
@@ -945,8 +945,8 @@ time {
 .ranking-copy {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   min-width: 0;
 }
 
@@ -964,8 +964,8 @@ time {
 
 .ranking-row h3 {
   margin: 0;
-  font-size: clamp(1.08rem, 2vw, 1.3rem);
-  line-height: 1.25;
+  font-size: clamp(1rem, 2.5vw, 1.22rem);
+  line-height: 1.2;
   color: var(--text);
   overflow-wrap: anywhere;
 }
@@ -977,9 +977,9 @@ time {
 }
 
 .recommendation-description {
-  font-size: 0.95rem;
+  font-size: clamp(0.88rem, 1.5vw, 0.95rem);
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .ranking-row p {
@@ -990,7 +990,7 @@ time {
 
 .ranking-footer {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   justify-content: space-between;
   padding-top: 8px;
@@ -999,7 +999,7 @@ time {
 
 .rating-track {
   flex: 1;
-  height: 6px;
+  height: 5px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--soft);
@@ -1018,8 +1018,8 @@ time {
   flex: 0 0 auto;
   color: var(--accent);
   font-weight: 800;
-  font-size: 0.9rem;
-  min-width: 50px;
+  font-size: clamp(0.85rem, 1.5vw, 0.9rem);
+  min-width: 45px;
   text-align: right;
 }
 
