@@ -23,6 +23,8 @@ A light, clean Firebase blog for anime, manga, manhua, and ranking-style posts.
 5. Go to **Build > Authentication**.
 6. Enable **Email/Password**.
 7. Go to **Users** and create one admin user.
+8. Go to **Build > Storage**.
+9. Create Firebase Storage so pasted admin images can upload.
 
 ## Firestore Rules
 
@@ -44,6 +46,23 @@ service cloud.firestore {
         request.auth != null ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
       allow delete: if request.auth != null;
+    }
+  }
+}
+```
+
+## Storage Rules
+
+Admin image paste/upload uses Firebase Storage. Public visitors can view images. Only signed-in admins can upload.
+
+```txt
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /uploads/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }
@@ -94,6 +113,8 @@ Sign in with your Firebase admin user. From there you can:
 - edit recommendations
 - delete recommendations
 - set title, image, date, category, tags, and content
+
+For image fields, you can either paste an image URL or click the field and paste an image from your clipboard. Pasted images upload to Firebase Storage and the URL is filled automatically.
 
 The public site does not link to the private admin page.
 

@@ -21,10 +21,17 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getDownloadURL,
+  getStorage,
+  ref as storageRef,
+  uploadBytes
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 const page = document.body.dataset.page;
 const POSTS_PER_PAGE = 6;
 let homePosts = [];
@@ -118,6 +125,45 @@ function setLoading(button, loadingText, isLoading) {
     button.textContent = button.dataset.originalText || button.textContent;
     button.disabled = false;
   }
+}
+
+function imageExtension(file) {
+  const fallback = file.type === "image/png" ? "png" : "jpg";
+  return file.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || fallback;
+}
+
+async function uploadPastedImage(file, folder) {
+  if (!auth.currentUser) throw new Error("Sign in before uploading images.");
+  const extension = imageExtension(file);
+  const path = `uploads/${folder}/${auth.currentUser.uid}-${Date.now()}.${extension}`;
+  const imageReference = storageRef(storage, path);
+  await uploadBytes(imageReference, file, { contentType: file.type || "image/jpeg" });
+  return getDownloadURL(imageReference);
+}
+
+function setupImagePaste(input, folder, messageNode) {
+  if (!input) return;
+
+  input.addEventListener("paste", async (event) => {
+    const file = [...(event.clipboardData?.items || [])]
+      .find((item) => item.type.startsWith("image/"))
+      ?.getAsFile();
+
+    if (!file) return;
+    event.preventDefault();
+    input.placeholder = "Uploading pasted image...";
+    showMessage(messageNode, "Uploading image...");
+
+    try {
+      input.value = await uploadPastedImage(file, folder);
+      showMessage(messageNode, "Image uploaded. The URL is ready.");
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      showMessage(messageNode, "Image upload failed. Check Firebase Storage setup.", true);
+    } finally {
+      input.placeholder = "Paste image, local file, or image URL";
+    }
+  });
 }
 
 function parseMarkdown(content = "") {
@@ -566,6 +612,8 @@ function wireAdminData() {
   resetPostForm();
   $("#reset-post-form").onclick = resetPostForm;
   if ($("#reset-ranking-form")) $("#reset-ranking-form").onclick = resetRankingForm;
+  setupImagePaste($("#post-image"), "posts", $("#post-message"));
+  setupImagePaste($("#ranking-image"), "recommendations", $("#ranking-message"));
 
   $("#post-form").onsubmit = async (event) => {
     event.preventDefault();
