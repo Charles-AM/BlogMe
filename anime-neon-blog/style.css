@@ -948,6 +948,13 @@ time {
   align-items: flex-start;
 }
 
+.ranking-row h3,
+.ranking-row p,
+.mini-rec-card h3,
+.mini-rec-card p {
+  overflow-wrap: anywhere;
+}
+
 .rating-track {
   height: 8px;
   overflow: hidden;
@@ -1346,6 +1353,36 @@ select:focus {
   .ranking-actions {
     justify-items: start;
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .ranking-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-media {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+  }
+
+  .ranking-copy,
+  .ranking-actions {
+    grid-column: 1 / -1;
+  }
+
+  .ranking-actions {
+    justify-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .mini-rec-card {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .mini-rec-card img {
+    width: 84px;
+    height: 76px;
   }
 }
 
