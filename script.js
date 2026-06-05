@@ -94,6 +94,18 @@ function showMessage(node, message, isError = false) {
   node.classList.toggle("error", isError);
 }
 
+function authErrorMessage(error) {
+  const messages = {
+    "auth/invalid-credential": "Firebase says those credentials do not match an admin user.",
+    "auth/user-not-found": "No Firebase Auth user exists for that email.",
+    "auth/wrong-password": "Firebase says the password is incorrect.",
+    "auth/invalid-email": "That email address is not valid.",
+    "auth/operation-not-allowed": "Email/password sign-in is not enabled in Firebase Authentication.",
+    "auth/network-request-failed": "Firebase could not be reached. Check your connection and local server."
+  };
+  return messages[error?.code] || `Sign-in failed: ${error?.code || "unknown error"}`;
+}
+
 function setLoading(button, loadingText, isLoading) {
   if (!button) return;
   if (isLoading) {
@@ -181,7 +193,7 @@ async function renderPostView(postId) {
   const snap = await getDoc(doc(db, "posts", postId));
   const main = $("main");
   if (!snap.exists()) {
-    main.innerHTML = '<section class="empty-state"><h3>Post not found</h3><p>This dispatch may have moved or been deleted.</p></section>';
+    main.innerHTML = '<section class="empty-state"><h3>Post not found</h3><p>This post may have moved or been deleted.</p></section>';
     return;
   }
   const post = { id: snap.id, ...snap.data() };
@@ -322,7 +334,8 @@ function wireAdminAuth() {
       await signInWithEmailAndPassword(auth, $("#login-email").value, $("#login-password").value);
       showMessage($("#login-message"), "");
     } catch (error) {
-      showMessage($("#login-message"), "Sign-in failed. Check the email and password.", true);
+      console.error("Firebase sign-in failed:", error);
+      showMessage($("#login-message"), authErrorMessage(error), true);
     } finally {
       setLoading(button, "Signing in...", false);
     }
@@ -345,6 +358,7 @@ function resetPostForm() {
 }
 
 function resetRankingForm() {
+  if (!$("#ranking-form")) return;
   $("#ranking-form").reset();
   $("#ranking-id").value = "";
   $("#save-ranking-button").textContent = "Save ranking";
@@ -449,7 +463,7 @@ function renderAdminRankings(rankings) {
 function wireAdminData() {
   resetPostForm();
   $("#reset-post-form").onclick = resetPostForm;
-  $("#reset-ranking-form").onclick = resetRankingForm;
+  if ($("#reset-ranking-form")) $("#reset-ranking-form").onclick = resetRankingForm;
 
   $("#post-form").onsubmit = async (event) => {
     event.preventDefault();
@@ -471,33 +485,37 @@ function wireAdminData() {
     }
   };
 
-  $("#ranking-form").onsubmit = async (event) => {
-    event.preventDefault();
-    const button = $("#save-ranking-button");
-    let saved = false;
-    setLoading(button, "Saving...", true);
-    try {
-      const id = $("#ranking-id").value;
-      const data = getRankingFormData();
-      if (id) await setDoc(doc(db, "rankings", id), data, { merge: true });
-      else await addDoc(collection(db, "rankings"), { ...data, likes: 0, createdAt: serverTimestamp() });
-      showMessage($("#ranking-message"), "Ranking saved.");
-      saved = true;
-    } catch (error) {
-      showMessage($("#ranking-message"), "Could not save the ranking. Check Firestore rules.", true);
-    } finally {
-      setLoading(button, "Saving...", false);
-      if (saved) resetRankingForm();
-    }
-  };
+  if ($("#ranking-form")) {
+    $("#ranking-form").onsubmit = async (event) => {
+      event.preventDefault();
+      const button = $("#save-ranking-button");
+      let saved = false;
+      setLoading(button, "Saving...", true);
+      try {
+        const id = $("#ranking-id").value;
+        const data = getRankingFormData();
+        if (id) await setDoc(doc(db, "rankings", id), data, { merge: true });
+        else await addDoc(collection(db, "rankings"), { ...data, likes: 0, createdAt: serverTimestamp() });
+        showMessage($("#ranking-message"), "Ranking saved.");
+        saved = true;
+      } catch (error) {
+        showMessage($("#ranking-message"), "Could not save the ranking. Check Firestore rules.", true);
+      } finally {
+        setLoading(button, "Saving...", false);
+        if (saved) resetRankingForm();
+      }
+    };
+  }
 
   onSnapshot(query(collection(db, "posts"), orderBy("date", "desc")), (snapshot) => {
     renderAdminPosts(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
   });
-  onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
-    renderAdminRankings(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
-  });
-  wireAiDraft();
+  if ($("#admin-rankings-list")) {
+    onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
+      renderAdminRankings(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })));
+    });
+  }
+  if ($("#ai-form")) wireAiDraft();
 }
 
 async function generateGeminiDraft(apiKey, topic) {
