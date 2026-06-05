@@ -874,10 +874,12 @@ time {
 }
 
 .ranking-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--soft);
-  aspect-ratio: 4 / 3;
 }
 
 .ranking-image {
@@ -1408,9 +1410,11 @@ select:focus {
 
   .ranking-media {
     grid-column: 1 / -1;
-    width: 100%;
+    justify-self: center;
+    width: min(100%, 16rem);
+    max-width: 16rem;
     height: auto;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 16 / 9;
   }
 
   .ranking-copy {
