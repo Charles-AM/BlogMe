@@ -25,7 +25,7 @@ import {
   getDownloadURL,
   getStorage,
   ref as storageRef,
-  uploadBytes
+  uploadBytesResumable
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const app = initializeApp(firebaseConfig);
@@ -132,13 +132,63 @@ function imageExtension(file) {
   return file.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || fallback;
 }
 
-async function uploadPastedImage(file, folder) {
+function compressImage(file, maxWidth = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Only image files can be uploaded."));
+      return;
+    }
+
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(1, maxWidth / image.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Could not prepare image for upload."));
+          return;
+        }
+        resolve(new File([blob], file.name || "upload.jpg", { type: "image/jpeg" }));
+      }, "image/jpeg", quality);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not read the pasted image."));
+    };
+
+    image.src = objectUrl;
+  });
+}
+
+async function uploadPastedImage(file, folder, onProgress) {
   if (!auth.currentUser) throw new Error("Sign in before uploading images.");
-  const extension = imageExtension(file);
+  const uploadFile = await compressImage(file);
+  const extension = imageExtension(uploadFile);
   const path = `uploads/${folder}/${auth.currentUser.uid}-${Date.now()}.${extension}`;
   const imageReference = storageRef(storage, path);
-  await uploadBytes(imageReference, file, { contentType: file.type || "image/jpeg" });
-  return getDownloadURL(imageReference);
+  const uploadTask = uploadBytesResumable(imageReference, uploadFile, { contentType: uploadFile.type || "image/jpeg" });
+
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        onProgress?.(percent);
+      },
+      reject,
+      async () => {
+        resolve(await getDownloadURL(uploadTask.snapshot.ref));
+      }
+    );
+  });
 }
 
 function setupImagePaste(input, folder, messageNode) {
@@ -152,14 +202,17 @@ function setupImagePaste(input, folder, messageNode) {
     if (!file) return;
     event.preventDefault();
     input.placeholder = "Uploading pasted image...";
-    showMessage(messageNode, "Uploading image...");
+    showMessage(messageNode, "Preparing image...");
 
     try {
-      input.value = await uploadPastedImage(file, folder);
+      input.value = await uploadPastedImage(file, folder, (percent) => {
+        showMessage(messageNode, `Uploading image... ${percent}%`);
+      });
       showMessage(messageNode, "Image uploaded. The URL is ready.");
     } catch (error) {
       console.error("Image upload failed:", error);
-      showMessage(messageNode, "Image upload failed. Check Firebase Storage setup.", true);
+      const detail = error?.code ? ` (${error.code})` : "";
+      showMessage(messageNode, `Image upload failed${detail}. Check Firebase Storage setup and rules.`, true);
     } finally {
       input.placeholder = "Paste image, local file, or image URL";
     }

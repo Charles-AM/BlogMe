@@ -862,6 +862,14 @@ time {
   padding: 22px;
 }
 
+.admin-note {
+  padding-block: 14px;
+}
+
+.admin-note .helper-text {
+  margin: 0;
+}
+
 .admin-card h2 {
   font-size: 1.35rem;
 }
