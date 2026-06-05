@@ -510,32 +510,21 @@ function renderRankings(rankings, topic = "all", search = "") {
   Object.entries(groups).forEach(([groupTitle, items]) => {
     const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
     const first = sortedItems[0] || {};
-    const groupLabels = [...new Set(sortedItems
-      .map(getRecommendationLabel)
-      .filter((label) => label && label !== groupTitle && label.length < 28)
-    )].slice(0, 4);
-    const featuredTitles = sortedItems.slice(0, 5).map((item) => item.title).filter(Boolean).join(" / ");
     const topicUrl = `recommendations.html?topic=${encodeURIComponent(groupTitle)}`;
     const group = document.createElement("section");
     group.className = "recommendation-group reveal-card";
     group.innerHTML = `
       <a class="recommendation-group-title" href="${escapeHtml(topicUrl)}">
-        <img src="${escapeHtml(first.imageUrl || "assets/regressed-ranker-hero.jpg")}" alt="${escapeHtml(groupTitle)}">
+        <div class="topic-cover">
+          <img src="${escapeHtml(first.imageUrl || "assets/regressed-ranker-hero.jpg")}" alt="${escapeHtml(groupTitle)}">
+        </div>
         <div>
           <span class="topic-count">${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
           <h3>${escapeHtml(groupTitle)}</h3>
-          <p>${escapeHtml(featuredTitles)}</p>
-          <div class="topic-tags"></div>
         </div>
       </a>
       <div class="recommendation-group-items"></div>
     `;
-    const topicTags = group.querySelector(".topic-tags");
-    groupLabels.forEach((label) => {
-      const tag = document.createElement("span");
-      tag.textContent = label;
-      topicTags.append(tag);
-    });
     const groupItems = group.querySelector(".recommendation-group-items");
 
     sortedItems.forEach((item) => {
@@ -545,7 +534,13 @@ function renderRankings(rankings, topic = "all", search = "") {
       clone.querySelector(".ranking-image").src = item.imageUrl;
       clone.querySelector(".ranking-image").alt = item.title;
       clone.querySelector("h3").textContent = item.title;
-      clone.querySelector(".genre-chip").textContent = getRecommendationLabel(item);
+      const label = getRecommendationLabel(item);
+      const chip = clone.querySelector(".genre-chip");
+      if (label && label !== groupTitle && label.length < 28) {
+        chip.textContent = label;
+      } else {
+        chip.remove();
+      }
       clone.querySelector("p").textContent = item.description;
       clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
       clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
