@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A neon anime blog for reviews, essays, and emotional damage.">
+    <title>Neon Frames | Anime Blog</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body data-page="home">
+    <div class="site-shell">
+      <header class="public-header">
+        <a class="brand" href="index.html" aria-label="Neon Frames home">
+          <span class="brand-mark">NF</span>
+          <span>
+            <strong>Neon Frames</strong>
+            <small>Anime dispatches after midnight</small>
+          </span>
+        </a>
+        <nav class="public-nav" aria-label="Primary navigation">
+          <a href="index.html" aria-current="page">Blog</a>
+          <a href="rankings.html">Rankings</a>
+          <a href="archive.html">Archive</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-orbit" aria-hidden="true"></div>
+          <div class="hero-copy">
+            <p class="eyebrow">Signal locked // anime culture</p>
+            <h1>Sharp reviews, glowing takes, and the shows that wreck us beautifully.</h1>
+            <p>Essays, rankings, and tiny emotional detonations from the neon side of the watchlist.</p>
+          </div>
+          <div class="hero-panel" aria-label="Featured stats">
+            <span>Latest frequency</span>
+            <strong>Weekly</strong>
+            <span>Primary mood</span>
+            <strong>Unreasonably invested</strong>
+          </div>
+        </section>
+
+        <section class="content-band">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Recent transmissions</p>
+              <h2>Latest Posts</h2>
+            </div>
+            <div class="status-pill" id="post-count">Loading...</div>
+          </div>
+          <div class="blog-grid" id="posts-grid" aria-live="polite"></div>
+          <div class="empty-state hidden" id="posts-empty">
+            <h3>No posts yet</h3>
+            <p>Once Firestore has blog posts, they will appear here automatically.</p>
+          </div>
+          <div class="pagination" id="pagination"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="post-card-template">
+      <article class="post-card reveal-card">
+        <a class="post-card-link" href="#">
+          <div class="image-wrap">
+            <img alt="">
+            <span class="category-badge"></span>
+          </div>
+          <div class="post-card-body">
+            <time></time>
+            <h3></h3>
+            <p></p>
+            <div class="tag-row"></div>
+          </div>
+        </a>
+      </article>
+    </template>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
+
