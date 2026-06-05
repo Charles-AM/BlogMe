@@ -356,23 +356,39 @@ function renderRankings(rankings, genre = "all", search = "") {
   list.innerHTML = "";
   empty.classList.toggle("hidden", filtered.length > 0);
 
-  filtered.forEach((item) => {
-    const clone = template.content.cloneNode(true);
-    clone.querySelector(".rank-number").textContent = `#${item.rank}`;
-    clone.querySelector(".ranking-image").src = item.imageUrl;
-    clone.querySelector(".ranking-image").alt = item.title;
-    clone.querySelector("h3").textContent = item.title;
-    clone.querySelector(".genre-chip").textContent = item.genre;
-    clone.querySelector("p").textContent = item.description;
-    clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
-    clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
-    const likeButton = clone.querySelector(".like-button");
-    likeButton.querySelector("b").textContent = item.likes || 0;
-    likeButton.addEventListener("click", async () => {
-      likeButton.disabled = true;
-      await setDoc(doc(db, "rankings", item.id), { likes: increment(1) }, { merge: true });
+  const groups = filtered.reduce((result, item) => {
+    const key = item.genre || "Recommendations";
+    result[key] = result[key] || [];
+    result[key].push(item);
+    return result;
+  }, {});
+
+  Object.entries(groups).forEach(([groupTitle, items]) => {
+    const group = document.createElement("section");
+    group.className = "recommendation-group reveal-card";
+    group.innerHTML = `<div class="recommendation-group-title"><p class="eyebrow">Ranked List</p><h3>${escapeHtml(groupTitle)}</h3></div><div class="recommendation-group-items"></div>`;
+    const groupItems = group.querySelector(".recommendation-group-items");
+
+    items.forEach((item) => {
+      const clone = template.content.cloneNode(true);
+      clone.querySelector(".rank-number").textContent = `#${item.rank}`;
+      clone.querySelector(".ranking-image").src = item.imageUrl;
+      clone.querySelector(".ranking-image").alt = item.title;
+      clone.querySelector("h3").textContent = item.title;
+      clone.querySelector(".genre-chip").textContent = item.genre;
+      clone.querySelector("p").textContent = item.description;
+      clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
+      clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
+      const likeButton = clone.querySelector(".like-button");
+      likeButton.querySelector("b").textContent = item.likes || 0;
+      likeButton.addEventListener("click", async () => {
+        likeButton.disabled = true;
+        await setDoc(doc(db, "rankings", item.id), { likes: increment(1) }, { merge: true });
+      });
+      groupItems.append(clone);
     });
-    list.append(clone);
+
+    list.append(group);
   });
 }
 

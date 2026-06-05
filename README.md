@@ -175,5 +175,17 @@ Recommended domain style:
 1. Open the private admin page.
 2. Sign in.
 3. Fill in the recommendation form.
-4. Click **Save recommendation**.
-5. The recommendation appears on `recommendations.html`.
+4. Use **List title / Genre** as the general heading, for example `Best Sports Anime`.
+5. Use the same list title for every item that should appear under that heading.
+6. Click **Save recommendation**.
+7. The recommendation appears on `recommendations.html`.
+
+Example:
+
+```txt
+List title / Genre: Best Sports Anime
+Rank number: 1
+Title: Ao Ashi
+Image URL: ...
+Description: ...
+```
