@@ -509,20 +509,13 @@ function renderRankings(rankings, topic = "all", search = "") {
 
   Object.entries(groups).forEach(([groupTitle, items]) => {
     const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
-    const first = sortedItems[0] || {};
-    const topicUrl = `recommendations.html?topic=${encodeURIComponent(groupTitle)}`;
     const group = document.createElement("section");
     group.className = "recommendation-group reveal-card";
     group.innerHTML = `
-      <a class="recommendation-group-title" href="${escapeHtml(topicUrl)}">
-        <div class="topic-cover">
-          <img src="${escapeHtml(first.imageUrl || "assets/regressed-ranker-hero.jpg")}" alt="${escapeHtml(groupTitle)}">
-        </div>
-        <div>
-          <span class="topic-count">${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
-          <h3>${escapeHtml(groupTitle)}</h3>
-        </div>
-      </a>
+      <header class="recommendation-group-title">
+        <h2>${escapeHtml(groupTitle)}</h2>
+        <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
+      </header>
       <div class="recommendation-group-items"></div>
     `;
     const groupItems = group.querySelector(".recommendation-group-items");
@@ -573,6 +566,7 @@ async function initRankings() {
   }
   currentRankings = await fetchRankings();
   const populateTopics = () => {
+    if (!filter) return;
     const current = filter.value;
     const topics = [...new Set(currentRankings.map(getRecommendationTopic).filter(Boolean))].sort();
     filter.innerHTML = '<option value="all">All topics</option>';
@@ -585,18 +579,18 @@ async function initRankings() {
     filter.value = topics.includes(current) ? current : "all";
   };
   populateTopics();
-  if (requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
+  if (filter && requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
     filter.value = requestedTopic;
   }
-  const updateRankings = () => renderRankings(currentRankings, filter.value, search?.value || "");
+  const updateRankings = () => renderRankings(currentRankings, filter?.value || requestedTopic || "all", search?.value || "");
   updateRankings();
-  filter.addEventListener("change", updateRankings);
+  filter?.addEventListener("change", updateRankings);
   search?.addEventListener("input", updateRankings);
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
     currentRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
     populateTopics();
-    if (requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
+    if (filter && requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
       filter.value = requestedTopic;
     }
     updateRankings();
