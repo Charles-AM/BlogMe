@@ -12,6 +12,7 @@ A light, clean Firebase blog for anime, manga, manhua, and ranking-style posts.
 - `script.js` - Firebase, rendering, post CRUD, archive logic
 - `firebase-config.js` - Firebase web app config
 - `netlify.toml` - Netlify static hosting config
+- `assets/regressed-ranker-hero.png` - homepage banner image
 
 ## Firebase Setup
 
