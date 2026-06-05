@@ -880,9 +880,13 @@ time {
 
 .ranking-row {
   display: grid;
-  grid-template-columns: 54px minmax(0, 170px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "rank actions"
+    "media media"
+    "copy copy";
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -900,6 +904,7 @@ time {
 }
 
 .rank-number {
+  grid-area: rank;
   display: grid;
   width: 52px;
   height: 52px;
@@ -911,10 +916,11 @@ time {
 }
 
 .ranking-media {
+  grid-area: media;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--soft);
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
 }
 
 .ranking-image {
@@ -929,8 +935,9 @@ time {
 }
 
 .ranking-copy {
+  grid-area: copy;
   display: grid;
-  align-content: center;
+  align-content: start;
   gap: 10px;
   min-width: 0;
 }
@@ -971,10 +978,11 @@ time {
 }
 
 .ranking-actions {
+  grid-area: actions;
   display: grid;
   gap: 10px;
   align-content: center;
-  justify-items: stretch;
+  justify-items: end;
 }
 
 .rating-value {
@@ -1332,10 +1340,6 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
-  .ranking-row {
-    grid-template-columns: 1fr;
-  }
-
   .recommendation-group-title {
     align-items: start;
     flex-direction: column;
@@ -1345,35 +1349,14 @@ select:focus {
     justify-items: start;
   }
 
-  .ranking-media {
-    width: 100%;
-    aspect-ratio: 16 / 10;
-  }
-
   .ranking-actions {
     justify-items: start;
-    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 1100px) {
-  .ranking-row {
-    grid-template-columns: 1fr;
-  }
-
-  .ranking-media {
-    width: 100%;
-    aspect-ratio: 16 / 10;
-  }
-
-  .ranking-copy,
-  .ranking-actions {
-    grid-column: 1 / -1;
-  }
-
   .ranking-actions {
     justify-items: start;
-    grid-template-columns: 1fr;
   }
 
   .mini-rec-card {
