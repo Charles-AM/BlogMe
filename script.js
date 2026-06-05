@@ -96,6 +96,14 @@ function normalizeTags(tags) {
     .filter(Boolean);
 }
 
+function getRecommendationTopic(item = {}) {
+  return item.topicTitle || item.listTitle || item.topic || item.genre || "Recommendations";
+}
+
+function getRecommendationLabel(item = {}) {
+  return item.genre || item.type || "Recommendation";
+}
+
 function showMessage(node, message, isError = false) {
   if (!node) return;
   node.textContent = message;
@@ -350,7 +358,7 @@ function renderHomeRecommendations(rankings) {
     clone.querySelector("img").alt = item.title;
     clone.querySelector(".rank-number").textContent = `#${item.rank}`;
     clone.querySelector("h3").textContent = item.title;
-    clone.querySelector("p").textContent = `${item.genre || "Pick"} · ${Number(item.rating || 0).toFixed(1)}/10`;
+    clone.querySelector("p").textContent = `${getRecommendationTopic(item)} · ${Number(item.rating || 0).toFixed(1)}/10`;
     list.append(clone);
   });
 }
@@ -439,23 +447,24 @@ async function initArchive() {
   });
 }
 
-function renderRankings(rankings, genre = "all", search = "") {
+function renderRankings(rankings, topic = "all", search = "") {
   const list = $("#rankings-list");
   const empty = $("#rankings-empty");
   const template = $("#ranking-template");
   const term = search.trim().toLowerCase();
   const filtered = rankings.filter((item) => {
-    const matchesGenre = genre === "all" || item.genre === genre;
-    const searchable = [item.title, item.genre, item.description].join(" ").toLowerCase();
+    const topicTitle = getRecommendationTopic(item);
+    const matchesTopic = topic === "all" || topicTitle === topic;
+    const searchable = [item.title, topicTitle, item.genre, item.description].join(" ").toLowerCase();
     const matchesSearch = !term || searchable.includes(term);
-    return matchesGenre && matchesSearch;
+    return matchesTopic && matchesSearch;
   });
 
   list.innerHTML = "";
   empty.classList.toggle("hidden", filtered.length > 0);
 
   const groups = filtered.reduce((result, item) => {
-    const key = item.genre || "Recommendations";
+    const key = getRecommendationTopic(item);
     result[key] = result[key] || [];
     result[key].push(item);
     return result;
@@ -473,7 +482,7 @@ function renderRankings(rankings, genre = "all", search = "") {
       clone.querySelector(".ranking-image").src = item.imageUrl;
       clone.querySelector(".ranking-image").alt = item.title;
       clone.querySelector("h3").textContent = item.title;
-      clone.querySelector(".genre-chip").textContent = item.genre;
+      clone.querySelector(".genre-chip").textContent = getRecommendationLabel(item);
       clone.querySelector("p").textContent = item.description;
       clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
       clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
@@ -493,11 +502,11 @@ async function initRankings() {
     return;
   }
   currentRankings = await fetchRankings();
-  const genres = [...new Set(currentRankings.map((item) => item.genre).filter(Boolean))].sort();
-  genres.forEach((genre) => {
+  const topics = [...new Set(currentRankings.map(getRecommendationTopic).filter(Boolean))].sort();
+  topics.forEach((topic) => {
     const option = document.createElement("option");
-    option.value = genre;
-    option.textContent = genre;
+    option.value = topic;
+    option.textContent = topic;
     filter.append(option);
   });
   const updateRankings = () => renderRankings(currentRankings, filter.value, search?.value || "");
@@ -577,6 +586,7 @@ function getRankingFormData() {
     imageUrl: $("#ranking-image").value.trim(),
     description: $("#ranking-description").value.trim(),
     rating: Number($("#ranking-rating").value),
+    topicTitle: $("#ranking-topic").value.trim(),
     genre: $("#ranking-genre").value.trim(),
     updatedAt: serverTimestamp()
   };
@@ -601,6 +611,7 @@ function fillRankingForm(item) {
   $("#ranking-image").value = item.imageUrl || "";
   $("#ranking-description").value = item.description || "";
   $("#ranking-rating").value = item.rating || "";
+  $("#ranking-topic").value = getRecommendationTopic(item);
   $("#ranking-genre").value = item.genre || "";
   $("#save-ranking-button").textContent = "Update recommendation";
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -639,7 +650,7 @@ function renderAdminRankings(rankings) {
     item.innerHTML = `
       <div>
         <h4>#${ranking.rank} ${escapeHtml(ranking.title)}</h4>
-      <p>${escapeHtml(ranking.genre)} // ${Number(ranking.rating).toFixed(1)}/10</p>
+      <p>${escapeHtml(getRecommendationTopic(ranking))} // ${escapeHtml(getRecommendationLabel(ranking))} // ${Number(ranking.rating).toFixed(1)}/10</p>
       </div>
       <div class="item-actions">
         <button class="ghost-button edit" type="button">Edit</button>
@@ -691,7 +702,7 @@ function wireAdminData() {
         const id = $("#ranking-id").value;
         const data = getRankingFormData();
         if (id) await setDoc(doc(db, "rankings", id), data, { merge: true });
-        else await addDoc(collection(db, "rankings"), { ...data, likes: 0, createdAt: serverTimestamp() });
+        else await addDoc(collection(db, "rankings"), { ...data, createdAt: serverTimestamp() });
         showMessage($("#ranking-message"), "Recommendation saved.");
         saved = true;
       } catch (error) {
@@ -895,9 +906,9 @@ async function seedDemoData() {
     await addDoc(collection(db, "rankings"), {
       rank: index + 1,
       title,
+      topicTitle: "Top Anime Rankings",
       genre,
       rating,
-      likes: 0,
       imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=900&q=80",
       description: `${title} earns its spot with unforgettable scenes, clean momentum, and the kind of emotional grip that ruins your sleep schedule.`,
       createdAt: serverTimestamp(),

@@ -42,10 +42,7 @@ service cloud.firestore {
 
     match /rankings/{rankingId} {
       allow read: if true;
-      allow create, update: if
-        request.auth != null ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
-      allow delete: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }
@@ -86,9 +83,7 @@ service cloud.firestore {
 
     match /rankings/{rankingId} {
       allow read: if true;
-      allow create, delete: if isOwner();
-      allow update: if isOwner() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow write: if isOwner();
     }
   }
 }
@@ -196,15 +191,17 @@ Recommended domain style:
 1. Open the private admin page.
 2. Sign in.
 3. Fill in the recommendation form.
-4. Use **List title / Genre** as the general heading, for example `Best Sports Anime`.
-5. Use the same list title for every item that should appear under that heading.
-6. Click **Save recommendation**.
-7. The recommendation appears on `recommendations.html`.
+4. Use **Topic title** as the general heading, for example `Best Sports Anime`.
+5. Use the same topic title for every item that should appear under that one list.
+6. Use **Genre / Type** for the individual item, for example `Soccer`, `Tennis`, `Boxing`, or `Basketball`.
+7. Click **Save recommendation**.
+8. The recommendation appears on `recommendations.html`.
 
 Example:
 
 ```txt
-List title / Genre: Best Sports Anime
+Topic title: Best Sports Anime
+Genre / Type: Soccer
 Rank number: 1
 Title: Ao Ashi
 Image URL: ...
