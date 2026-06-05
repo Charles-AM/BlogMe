@@ -191,11 +191,11 @@ Recommended domain style:
 1. Open the private admin page.
 2. Sign in.
 3. Fill in the recommendation form.
-4. Use **Topic title** as the general heading, for example `Best Sports Anime`.
+4. Use **Topic title** as the recommendation post title, for example `Best Sports Anime`.
 5. Use the same topic title for every item that should appear under that one list.
 6. Use **Genre / Type** for the individual item, for example `Soccer`, `Tennis`, `Boxing`, or `Basketball`.
 7. Click **Save recommendation**.
-8. The recommendation appears on `recommendations.html`.
+8. The topic appears as one recommendation post on the homepage and `recommendations.html`, with the saved items grouped inside it.
 
 Example:
 
@@ -207,3 +207,5 @@ Title: Ao Ashi
 Image URL: ...
 Description: ...
 ```
+
+To create another recommendation post, use a different **Topic title**, for example `Best Romance Anime`.

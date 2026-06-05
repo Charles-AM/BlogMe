@@ -104,6 +104,47 @@ function getRecommendationLabel(item = {}) {
   return item.genre || item.type || "Recommendation";
 }
 
+function getRecommendationDate(items = []) {
+  const dates = items
+    .map((item) => item.updatedAt || item.createdAt || item.date)
+    .filter(Boolean)
+    .map(toDate)
+    .filter((date) => !Number.isNaN(date.getTime()));
+  return dates.length ? new Date(Math.max(...dates.map((date) => date.getTime()))) : new Date();
+}
+
+function buildRecommendationLists(rankings = []) {
+  const groups = rankings.reduce((result, item) => {
+    const topic = getRecommendationTopic(item);
+    result[topic] = result[topic] || [];
+    result[topic].push(item);
+    return result;
+  }, {});
+
+  return Object.entries(groups).map(([topic, items]) => {
+    const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
+    const first = sortedItems[0] || {};
+    const labels = [...new Set(sortedItems.map(getRecommendationLabel).filter(Boolean))].slice(0, 3);
+    const titles = sortedItems.slice(0, 4).map((item) => item.title).filter(Boolean).join(", ");
+    return {
+      id: slugify(topic),
+      kind: "recommendation",
+      title: topic,
+      imageUrl: first.imageUrl || "assets/regressed-ranker-hero.jpg",
+      content: `${sortedItems.length} ranked pick${sortedItems.length === 1 ? "" : "s"}${titles ? `: ${titles}` : ""}.`,
+      date: getRecommendationDate(sortedItems),
+      category: "Recommendations",
+      tags: labels,
+      items: sortedItems,
+      href: `recommendations.html?topic=${encodeURIComponent(topic)}`
+    };
+  }).sort((a, b) => toDate(b.date) - toDate(a.date));
+}
+
+function sortFeedItems(items = []) {
+  return [...items].sort((a, b) => toDate(b.date) - toDate(a.date));
+}
+
 function showMessage(node, message, isError = false) {
   if (!node) return;
   node.textContent = message;
@@ -260,7 +301,7 @@ function renderPostCards(posts, currentPage = 1) {
   const pagination = $("#pagination");
   const template = $("#post-card-template");
 
-  if (count) count.textContent = `${posts.length} post${posts.length === 1 ? "" : "s"}`;
+  if (count) count.textContent = `${posts.length} recent item${posts.length === 1 ? "" : "s"}`;
   grid.innerHTML = "";
   pagination.innerHTML = "";
   empty.classList.toggle("hidden", posts.length > 0);
@@ -274,7 +315,7 @@ function renderPostCards(posts, currentPage = 1) {
     const img = clone.querySelector("img");
     const tags = clone.querySelector(".tag-row");
     if (currentPage === 1 && index === 0 && posts.length > 1) card.classList.add("featured-post-card");
-    link.href = `index.html?post=${post.id}-${slugify(post.title)}`;
+    link.href = post.href || `index.html?post=${post.id}-${slugify(post.title)}`;
     img.src = post.imageUrl;
     img.alt = post.title;
     clone.querySelector(".category-badge").textContent = post.category || "Anime";
@@ -347,8 +388,9 @@ function renderHomeRecommendations(rankings) {
   const template = $("#home-recommendation-template");
   if (!list || !template) return;
 
-  const topRankings = rankings.slice(0, 3);
-  if (total) total.textContent = rankings.length;
+  const recommendationLists = buildRecommendationLists(rankings);
+  const topRankings = recommendationLists.slice(0, 3);
+  if (total) total.textContent = recommendationLists.length;
   list.innerHTML = "";
   empty?.classList.toggle("hidden", topRankings.length > 0);
 
@@ -356,9 +398,10 @@ function renderHomeRecommendations(rankings) {
     const clone = template.content.cloneNode(true);
     clone.querySelector("img").src = item.imageUrl;
     clone.querySelector("img").alt = item.title;
-    clone.querySelector(".rank-number").textContent = `#${item.rank}`;
+    clone.querySelector(".rank-number").textContent = `${item.items.length} picks`;
     clone.querySelector("h3").textContent = item.title;
-    clone.querySelector("p").textContent = `${getRecommendationTopic(item)} · ${Number(item.rating || 0).toFixed(1)}/10`;
+    clone.querySelector("p").textContent = item.content;
+    clone.querySelector(".mini-rec-card").href = item.href;
     list.append(clone);
   });
 }
@@ -400,7 +443,7 @@ async function initHome() {
   }
   try {
     const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
-    setupPostFilters(posts);
+    setupPostFilters(sortFeedItems([...posts, ...buildRecommendationLists(rankings)]));
     renderHomeRecommendations(rankings);
   } catch (error) {
     showMessage($("#post-count"), "Firebase config needed", true);
@@ -417,11 +460,12 @@ async function initArchive() {
     empty.querySelector("p").textContent = "Add your Firebase config and published posts will appear here.";
     return;
   }
-  const posts = await fetchPosts();
-  empty.classList.toggle("hidden", posts.length > 0);
+  const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
+  const archiveItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
+  empty.classList.toggle("hidden", archiveItems.length > 0);
   archive.innerHTML = "";
 
-  const groups = posts.reduce((result, post) => {
+  const groups = archiveItems.reduce((result, post) => {
     const key = formatMonth(post.date);
     result[key] = result[key] || [];
     result[key].push(post);
@@ -436,7 +480,7 @@ async function initArchive() {
     monthPosts.forEach((post) => {
       const li = document.createElement("li");
       li.innerHTML = `
-        <a href="index.html?post=${post.id}-${slugify(post.title)}">
+        <a href="${escapeHtml(post.href || `index.html?post=${post.id}-${slugify(post.title)}`)}">
           <time>${formatDate(post.date)}</time>
           <strong>${escapeHtml(post.title)}</strong>
         </a>
@@ -496,19 +540,30 @@ function renderRankings(rankings, topic = "all", search = "") {
 async function initRankings() {
   const filter = $("#genre-filter");
   const search = $("#recommendation-search");
+  const params = new URLSearchParams(location.search);
+  const requestedTopic = params.get("topic");
   if (!hasConfiguredFirebase()) {
     $("#rankings-empty").classList.remove("hidden");
     $("#rankings-empty p").textContent = "Add your Firebase config and saved rankings will appear here.";
     return;
   }
   currentRankings = await fetchRankings();
-  const topics = [...new Set(currentRankings.map(getRecommendationTopic).filter(Boolean))].sort();
-  topics.forEach((topic) => {
-    const option = document.createElement("option");
-    option.value = topic;
-    option.textContent = topic;
-    filter.append(option);
-  });
+  const populateTopics = () => {
+    const current = filter.value;
+    const topics = [...new Set(currentRankings.map(getRecommendationTopic).filter(Boolean))].sort();
+    filter.innerHTML = '<option value="all">All topics</option>';
+    topics.forEach((topic) => {
+      const option = document.createElement("option");
+      option.value = topic;
+      option.textContent = topic;
+      filter.append(option);
+    });
+    filter.value = topics.includes(current) ? current : "all";
+  };
+  populateTopics();
+  if (requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
+    filter.value = requestedTopic;
+  }
   const updateRankings = () => renderRankings(currentRankings, filter.value, search?.value || "");
   updateRankings();
   filter.addEventListener("change", updateRankings);
@@ -516,6 +571,10 @@ async function initRankings() {
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
     currentRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
+    populateTopics();
+    if (requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
+      filter.value = requestedTopic;
+    }
     updateRankings();
   });
 }

@@ -21,12 +21,14 @@
 
 html {
   min-height: 100%;
+  overflow-x: hidden;
   background: var(--bg);
 }
 
 body {
   min-height: 100%;
   margin: 0;
+  overflow-x: hidden;
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background:
@@ -346,6 +348,28 @@ h2 {
 
 .page-hero.compact {
   min-height: 270px;
+}
+
+.image-page-hero {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  min-height: 300px;
+}
+
+.image-page-hero::before {
+  inset: 18px -18px 18px;
+}
+
+.image-page-hero img {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: 0 24px 72px rgba(32, 37, 58, 0.18);
 }
 
 .content-band {
@@ -1074,8 +1098,30 @@ select:focus {
     padding: 20px 0 28px;
   }
 
+  .page-hero h1 {
+    font-size: 1.95rem;
+    overflow-wrap: anywhere;
+  }
+
+  .image-page-hero {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .image-page-hero > * {
+    min-width: 0;
+  }
+
+  .image-page-hero img {
+    border-radius: 16px;
+  }
+
   .page-hero::before {
-    inset-inline: -10px;
+    inset-inline: 0;
+  }
+
+  .image-page-hero::before {
+    inset-inline: 0;
   }
 
   .hero-art,
