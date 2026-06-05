@@ -361,7 +361,7 @@ function resetRankingForm() {
   if (!$("#ranking-form")) return;
   $("#ranking-form").reset();
   $("#ranking-id").value = "";
-  $("#save-ranking-button").textContent = "Save ranking";
+  $("#save-ranking-button").textContent = "Save recommendation";
 }
 
 function getPostFormData() {
@@ -408,7 +408,7 @@ function fillRankingForm(item) {
   $("#ranking-description").value = item.description || "";
   $("#ranking-rating").value = item.rating || "";
   $("#ranking-genre").value = item.genre || "";
-  $("#save-ranking-button").textContent = "Update ranking";
+  $("#save-ranking-button").textContent = "Update recommendation";
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -445,7 +445,7 @@ function renderAdminRankings(rankings) {
     item.innerHTML = `
       <div>
         <h4>#${ranking.rank} ${escapeHtml(ranking.title)}</h4>
-        <p>${escapeHtml(ranking.genre)} // ${Number(ranking.rating).toFixed(1)}/10</p>
+      <p>${escapeHtml(ranking.genre)} // ${Number(ranking.rating).toFixed(1)}/10</p>
       </div>
       <div class="item-actions">
         <button class="ghost-button edit" type="button">Edit</button>
@@ -496,10 +496,10 @@ function wireAdminData() {
         const data = getRankingFormData();
         if (id) await setDoc(doc(db, "rankings", id), data, { merge: true });
         else await addDoc(collection(db, "rankings"), { ...data, likes: 0, createdAt: serverTimestamp() });
-        showMessage($("#ranking-message"), "Ranking saved.");
+        showMessage($("#ranking-message"), "Recommendation saved.");
         saved = true;
       } catch (error) {
-        showMessage($("#ranking-message"), "Could not save the ranking. Check Firestore rules.", true);
+        showMessage($("#ranking-message"), "Could not save the recommendation. Check Firestore rules.", true);
       } finally {
         setLoading(button, "Saving...", false);
         if (saved) resetRankingForm();

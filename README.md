@@ -5,6 +5,7 @@ A light, clean Firebase blog for anime, manga, manhua, and ranking-style posts.
 ## Pages
 
 - `index.html` - public blog homepage and full post view
+- `recommendations.html` - ranked anime, manga, and manhua recommendations
 - `archive.html` - public archive grouped by month and year
 - `admin.html` - private post dashboard, not linked publicly
 - `style.css` - white gradient responsive UI
@@ -35,6 +36,14 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+
+    match /rankings/{rankingId} {
+      allow read: if true;
+      allow create, update: if
+        request.auth != null ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow delete: if request.auth != null;
+    }
   }
 }
 ```
@@ -54,6 +63,13 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isOwner();
     }
+
+    match /rankings/{rankingId} {
+      allow read: if true;
+      allow create, delete: if isOwner();
+      allow update: if isOwner() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+    }
   }
 }
 ```
@@ -71,6 +87,9 @@ Sign in with your Firebase admin user. From there you can:
 - create posts
 - edit posts
 - delete posts
+- create recommendations
+- edit recommendations
+- delete recommendations
 - set title, image, date, category, tags, and content
 
 The public site does not link to `admin.html`.
@@ -130,3 +149,10 @@ http://localhost:8080/admin.html
 5. The post appears on `index.html`.
 6. The post also appears in `archive.html`.
 
+## Recommendations
+
+1. Open the private admin page.
+2. Sign in.
+3. Fill in the recommendation form.
+4. Click **Save recommendation**.
+5. The recommendation appears on `recommendations.html`.

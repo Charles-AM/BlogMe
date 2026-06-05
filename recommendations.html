@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Anime, manga, and manhua recommendations from Regressed Ranker.">
+    <title>Recommendations | Regressed Ranker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body data-page="rankings">
+    <div class="site-shell">
+      <header class="public-header">
+        <a class="brand" href="index.html" aria-label="Regressed Ranker home">
+          <span class="brand-mark">RR</span>
+          <span>
+            <strong>Regressed Ranker</strong>
+            <small>Anime · Manga · Manhua · Ranker</small>
+          </span>
+        </a>
+        <nav class="public-nav" aria-label="Primary navigation">
+          <a href="index.html">Blog</a>
+          <a href="recommendations.html" aria-current="page">Recommendations</a>
+          <a href="archive.html">Archive</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="page-hero compact">
+          <p class="eyebrow">Anime · Manga · Manhua · Ranker</p>
+          <h1>Recommendations</h1>
+          <p>Ranked picks worth reading, watching, or revisiting.</p>
+        </section>
+
+        <section class="content-band">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Browse</p>
+              <h2>Current Picks</h2>
+            </div>
+            <select class="genre-filter" id="genre-filter" aria-label="Filter recommendations by genre">
+              <option value="all">All genres</option>
+            </select>
+          </div>
+          <div class="leaderboard" id="rankings-list" aria-live="polite"></div>
+          <div class="empty-state hidden" id="rankings-empty">
+            <h3>No recommendations yet</h3>
+            <p>Saved recommendations will show up here automatically.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="ranking-template">
+      <article class="ranking-row reveal-card">
+        <div class="rank-number"></div>
+        <img class="ranking-image" alt="">
+        <div class="ranking-copy">
+          <div class="ranking-title-line">
+            <h3></h3>
+            <span class="genre-chip"></span>
+          </div>
+          <p></p>
+          <div class="rating-track" aria-label="Rating out of 10">
+            <span></span>
+          </div>
+        </div>
+        <div class="ranking-actions">
+          <strong class="rating-value"></strong>
+          <button class="like-button" type="button" aria-label="Like this recommendation">
+            <span>Like</span>
+            <b></b>
+          </button>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
