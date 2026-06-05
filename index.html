@@ -7,7 +7,7 @@
     <title>Regressed Ranker | Blog</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
   </head>
   <body data-page="home">
@@ -21,18 +21,22 @@
           </span>
         </a>
         <nav class="public-nav" aria-label="Primary navigation">
-          <a href="index.html" aria-current="page">Blog</a>
-          <a href="recommendations.html">Recommendations</a>
-          <a href="archive.html">Archive</a>
+          <a href="index.html" data-step="01" aria-current="page">Blog</a>
+          <a href="recommendations.html" data-step="02">Recommendations</a>
+          <a href="archive.html" data-step="03">Archive</a>
         </nav>
       </header>
 
       <main>
         <section class="hero">
           <div class="hero-copy">
-            <p class="eyebrow">Anime · Manga · Manhua · Ranker</p>
             <h1>Regressed Ranker</h1>
-            <p>Blogs, reviews, and ranked thoughts in one clean place.</p>
+            <p>Anime, manga, manhua, and ranked thoughts.</p>
+            <div class="quick-links" aria-label="Quick links">
+              <a href="#posts-grid">Read posts</a>
+              <a href="recommendations.html">See recommendations</a>
+              <a href="archive.html">Browse archive</a>
+            </div>
           </div>
         </section>
 
@@ -43,6 +47,18 @@
               <h2>Recent Posts</h2>
             </div>
             <div class="status-pill" id="post-count">Loading...</div>
+          </div>
+          <div class="post-tools" aria-label="Post filters">
+            <label class="search-field">
+              <span>Search</span>
+              <input id="post-search" type="search" placeholder="Search posts">
+            </label>
+            <label class="select-field">
+              <span>Category</span>
+              <select id="post-category-filter">
+                <option value="all">All categories</option>
+              </select>
+            </label>
           </div>
           <div class="blog-grid" id="posts-grid" aria-live="polite"></div>
           <div class="empty-state hidden" id="posts-empty">

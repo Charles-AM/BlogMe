@@ -27,6 +27,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const page = document.body.dataset.page;
 const POSTS_PER_PAGE = 6;
+let homePosts = [];
 
 const AI_REVIEW_PROMPT =
   "Write a short anime review (150-300 words) as a passionate human journalist. Use short sentences, occasional humor, genuine emotion, and a natural voice. Avoid bullet points, lists, and formal language. Make it feel personal, like a friend recommending an anime. Do not include any AI-sounding phrases such as 'as an AI' or 'in conclusion'. Just write the review.";
@@ -152,7 +153,7 @@ function renderPostCards(posts, currentPage = 1) {
   const pagination = $("#pagination");
   const template = $("#post-card-template");
 
-  if (count) count.textContent = `${posts.length} saved post${posts.length === 1 ? "" : "s"}`;
+  if (count) count.textContent = `${posts.length} post${posts.length === 1 ? "" : "s"}`;
   grid.innerHTML = "";
   pagination.innerHTML = "";
   empty.classList.toggle("hidden", posts.length > 0);
@@ -187,6 +188,46 @@ function renderPostCards(posts, currentPage = 1) {
     button.addEventListener("click", () => renderPostCards(posts, i));
     pagination.append(button);
   }
+}
+
+function populatePostCategoryFilter(posts) {
+  const filter = $("#post-category-filter");
+  if (!filter) return;
+  const current = filter.value;
+  const categories = [...new Set(posts.map((post) => post.category).filter(Boolean))].sort();
+  filter.innerHTML = '<option value="all">All categories</option>';
+  categories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    filter.append(option);
+  });
+  filter.value = categories.includes(current) ? current : "all";
+}
+
+function applyPostFilters() {
+  const search = ($("#post-search")?.value || "").trim().toLowerCase();
+  const category = $("#post-category-filter")?.value || "all";
+  const filtered = homePosts.filter((post) => {
+    const searchable = [
+      post.title,
+      post.category,
+      post.content,
+      normalizeTags(post.tags).join(" ")
+    ].join(" ").toLowerCase();
+    const matchesSearch = !search || searchable.includes(search);
+    const matchesCategory = category === "all" || post.category === category;
+    return matchesSearch && matchesCategory;
+  });
+  renderPostCards(filtered);
+}
+
+function setupPostFilters(posts) {
+  homePosts = posts;
+  populatePostCategoryFilter(posts);
+  $("#post-search")?.addEventListener("input", applyPostFilters);
+  $("#post-category-filter")?.addEventListener("change", applyPostFilters);
+  applyPostFilters();
 }
 
 async function renderPostView(postId) {
@@ -224,7 +265,7 @@ async function initHome() {
     return;
   }
   try {
-    renderPostCards(await fetchPosts());
+    setupPostFilters(await fetchPosts());
   } catch (error) {
     showMessage($("#post-count"), "Firebase config needed", true);
     console.error(error);
