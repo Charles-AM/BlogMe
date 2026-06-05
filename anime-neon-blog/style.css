@@ -908,7 +908,7 @@ time {
 .ranking-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 5 / 3;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: var(--soft);
 }
@@ -1518,10 +1518,10 @@ select:focus {
   .ranking-media {
     grid-column: 1 / -1;
     justify-self: center;
-    width: min(100%, 18rem);
-    max-width: 18rem;
+    width: min(100%, 16rem);
+    max-width: 16rem;
     height: auto;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 16 / 9;
   }
 
   .ranking-copy {
