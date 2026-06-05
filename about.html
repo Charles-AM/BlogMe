@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Chronological archive of every Regressed Ranker blog post.">
-    <title>Archive | Regressed Ranker</title>
+    <meta name="description" content="About Regressed Ranker, an anime, manga, manhua, and recommendations blog.">
+    <title>About | Regressed Ranker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
   </head>
-  <body data-page="archive">
+  <body>
     <div class="site-shell">
       <header class="public-header">
         <a class="brand" href="index.html" aria-label="Regressed Ranker home">
@@ -23,36 +23,30 @@
         <nav class="public-nav" aria-label="Primary navigation">
           <a href="index.html" data-step="01">Blog</a>
           <a href="recommendations.html" data-step="02">Recommendations</a>
-          <a href="archive.html" data-step="03" aria-current="page">Archive</a>
+          <a href="archive.html" data-step="03">Archive</a>
         </nav>
       </header>
 
       <main>
-        <section class="page-hero image-page-hero">
-          <img src="assets/regressed-ranker-hero.jpg" alt="Regressed Ranker archive banner">
-          <div>
-            <p class="eyebrow">Anime · Manga · Manhua · Ranker</p>
-            <h1>Archive</h1>
-            <p>Browse every blog post and recommendation list by month.</p>
-          </div>
+        <section class="simple-page-heading">
+          <p class="eyebrow">About</p>
+          <h1>Regressed Ranker</h1>
         </section>
 
-        <section class="content-band">
-          <div class="archive-list" id="archive-list" aria-live="polite"></div>
-          <div class="empty-state hidden" id="archive-empty">
-            <h3>No archive entries yet</h3>
-            <p>Published Firestore posts will be grouped here automatically.</p>
-          </div>
-        </section>
+        <article class="trust-page">
+          <p>Regressed Ranker is a personal blog for anime, manga, manhua, reviews, and recommendation lists.</p>
+          <p>The goal is simple: help readers find stories worth watching or reading. Posts are written in a casual voice, with honest opinions and clear reasons for each recommendation.</p>
+          <p>This site covers rankings, short reviews, watch notes, and list-style guides. We try to keep the writing useful, readable, and easy to enjoy.</p>
+          <p>Regressed Ranker is not connected to any anime studio, publisher, streaming service, or official franchise owner.</p>
+        </article>
       </main>
+
       <footer class="site-footer">
-        <a href="about.html">About</a>
+        <a href="about.html" aria-current="page">About</a>
         <a href="contact.html">Contact</a>
         <a href="privacy.html">Privacy</a>
         <a href="terms.html">Terms</a>
       </footer>
     </div>
-
-    <script type="module" src="script.js"></script>
   </body>
 </html>
