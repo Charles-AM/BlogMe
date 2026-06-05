@@ -917,6 +917,8 @@ time {
 
 .ranking-media {
   grid-area: media;
+  justify-self: center;
+  width: min(100%, clamp(15rem, 42vw, 20rem));
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--soft);
@@ -939,6 +941,7 @@ time {
   display: grid;
   align-content: start;
   gap: 10px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -1355,10 +1358,6 @@ select:focus {
 }
 
 @media (max-width: 1100px) {
-  .ranking-actions {
-    justify-items: start;
-  }
-
   .mini-rec-card {
     grid-template-columns: 84px minmax(0, 1fr);
   }
@@ -1488,9 +1487,11 @@ select:focus {
 
   .ranking-media {
     grid-column: 1 / -1;
-    width: 100%;
+    justify-self: center;
+    width: min(100%, 18rem);
+    max-width: 18rem;
     height: auto;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 4 / 3;
   }
 
   .ranking-copy {
