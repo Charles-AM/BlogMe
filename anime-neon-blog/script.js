@@ -562,7 +562,7 @@ function renderRankings(rankings, topic = "all", search = "") {
     sortedItems.forEach((item) => {
       const clone = template.content.cloneNode(true);
       const row = clone.querySelector(".ranking-row");
-      clone.querySelector(".rank-number").textContent = `#${item.rank}`;
+      clone.querySelector(".ranking-rank-badge").textContent = `#${item.rank}`;
       clone.querySelector(".ranking-image").src = item.imageUrl;
       clone.querySelector(".ranking-image").alt = item.title;
       clone.querySelector("h3").textContent = item.title;

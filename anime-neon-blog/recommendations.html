@@ -51,22 +51,24 @@
 
     <template id="ranking-template">
       <article class="ranking-row reveal-card">
-        <div class="rank-number"></div>
         <div class="ranking-media">
           <img class="ranking-image" alt="">
+          <div class="ranking-rank-badge"></div>
         </div>
         <div class="ranking-copy">
-          <div class="ranking-title-line">
-            <h3></h3>
-            <span class="genre-chip"></span>
+          <div class="ranking-header">
+            <div class="ranking-title-line">
+              <h3></h3>
+              <span class="genre-chip"></span>
+            </div>
           </div>
           <div class="recommendation-description"></div>
-          <div class="rating-track" aria-label="Rating out of 10">
-            <span></span>
+          <div class="ranking-footer">
+            <div class="rating-track" aria-label="Rating out of 10">
+              <span></span>
+            </div>
+            <strong class="rating-value"></strong>
           </div>
-        </div>
-        <div class="ranking-actions">
-          <strong class="rating-value"></strong>
         </div>
       </article>
     </template>
