@@ -548,8 +548,7 @@ time {
 
 .pagination button,
 .primary-button,
-.ghost-button,
-.like-button {
+.ghost-button {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -574,8 +573,7 @@ time {
 
 .primary-button:hover,
 .pagination button:hover,
-.ghost-button:hover,
-.like-button:hover {
+.ghost-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 14px 34px rgba(32, 37, 58, 0.12);
 }
@@ -750,14 +748,6 @@ time {
 .rating-value {
   color: var(--accent);
   text-align: center;
-}
-
-.like-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 0 12px;
 }
 
 .archive-list {

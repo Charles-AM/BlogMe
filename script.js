@@ -13,7 +13,6 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  increment
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth,
@@ -478,12 +477,6 @@ function renderRankings(rankings, genre = "all", search = "") {
       clone.querySelector("p").textContent = item.description;
       clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
       clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
-      const likeButton = clone.querySelector(".like-button");
-      likeButton.querySelector("b").textContent = item.likes || 0;
-      likeButton.addEventListener("click", async () => {
-        likeButton.disabled = true;
-        await setDoc(doc(db, "rankings", item.id), { likes: increment(1) }, { merge: true });
-      });
       groupItems.append(clone);
     });
 
