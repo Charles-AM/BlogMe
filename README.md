@@ -7,7 +7,7 @@ A light, clean Firebase blog for anime, manga, manhua, and ranking-style posts.
 - `index.html` - public blog homepage and full post view
 - `recommendations.html` - ranked anime, manga, and manhua recommendations
 - `archive.html` - public archive grouped by month and year
-- `admin.html` - private post dashboard, not linked publicly
+- `rr-vault-9k4m2.html` - private admin dashboard, not linked publicly
 - `style.css` - white gradient responsive UI
 - `script.js` - Firebase, rendering, post CRUD, archive logic
 - `firebase-config.js` - Firebase web app config
@@ -74,12 +74,14 @@ service cloud.firestore {
 }
 ```
 
+You can also paste that same UID into `adminUid` in `firebase-config.js`. That makes the admin page sign out any other authenticated user immediately. Firestore rules are still the real security layer.
+
 ## Admin Page
 
 Open:
 
 ```txt
-admin.html
+rr-vault-9k4m2.html
 ```
 
 Sign in with your Firebase admin user. From there you can:
@@ -92,12 +94,12 @@ Sign in with your Firebase admin user. From there you can:
 - delete recommendations
 - set title, image, date, category, tags, and content
 
-The public site does not link to `admin.html`.
+The public site does not link to the private admin page.
 
-Before going live, rename it to something private:
+You can rename it again before going live:
 
 ```bash
-mv admin.html admin-your-secret-name.html
+mv rr-vault-9k4m2.html your-private-name.html
 ```
 
 ## Local Preview
@@ -117,7 +119,7 @@ http://localhost:8080
 Admin:
 
 ```txt
-http://localhost:8080/admin.html
+http://localhost:8080/rr-vault-9k4m2.html
 ```
 
 ## Deploy to Netlify
@@ -136,7 +138,7 @@ http://localhost:8080/admin.html
 
 ### Drag-and-Drop Method
 
-1. Rename `admin.html`.
+1. Keep the private admin page name unlinked, or rename it again.
 2. Go to [Netlify Drop](https://app.netlify.com/drop).
 3. Drag the project folder into the page.
 

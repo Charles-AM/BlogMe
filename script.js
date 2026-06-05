@@ -1,4 +1,4 @@
-import { firebaseConfig } from "./firebase-config.js";
+import { adminUid, firebaseConfig } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore,
@@ -343,10 +343,16 @@ function wireAdminAuth() {
 
   logoutButton.addEventListener("click", () => signOut(auth));
   onAuthStateChanged(auth, (user) => {
-    $("#login-panel").classList.toggle("hidden", Boolean(user));
-    $("#admin-dashboard").classList.toggle("hidden", !user);
-    logoutButton.classList.toggle("hidden", !user);
-    if (user) wireAdminData();
+    const allowedUser = Boolean(user) && (!adminUid || user.uid === adminUid);
+    if (user && !allowedUser) {
+      signOut(auth);
+      showMessage($("#login-message"), "This account is not allowed to manage this site.", true);
+      return;
+    }
+    $("#login-panel").classList.toggle("hidden", allowedUser);
+    $("#admin-dashboard").classList.toggle("hidden", !allowedUser);
+    logoutButton.classList.toggle("hidden", !allowedUser);
+    if (allowedUser) wireAdminData();
   });
 }
 

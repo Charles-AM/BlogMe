@@ -9,3 +9,7 @@ export const firebaseConfig = {
   appId: "1:64257809517:web:216bd5bebe65478cd43364",
   measurementId: "G-E04JFLW1HY"
 };
+
+// Optional: paste your Firebase Authentication admin user's UID here.
+// This is a client-side convenience check only. Firestore rules still enforce writes.
+export const adminUid = "";
