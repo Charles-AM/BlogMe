@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Private Console | Neon Frames</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body data-page="admin">
+    <div class="admin-shell">
+      <header class="admin-header">
+        <div>
+          <p class="eyebrow">Private owner console</p>
+          <h1>Neon Frames Admin</h1>
+        </div>
+        <button class="ghost-button hidden" id="logout-button" type="button">Sign out</button>
+      </header>
+
+      <main>
+        <section class="admin-card" id="login-panel">
+          <h2>Sign in</h2>
+          <p class="helper-text">Use the single owner account you created in Firebase Authentication.</p>
+          <form id="login-form" class="stacked-form">
+            <label>
+              Email
+              <input id="login-email" type="email" autocomplete="email" required>
+            </label>
+            <label>
+              Password
+              <input id="login-password" type="password" autocomplete="current-password" required>
+            </label>
+            <button class="primary-button" id="login-button" type="submit">Sign in</button>
+          </form>
+          <p class="form-message" id="login-message" role="status"></p>
+        </section>
+
+        <section class="admin-dashboard hidden" id="admin-dashboard">
+          <div class="admin-grid">
+            <section class="admin-card">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Posts</p>
+                  <h2>Create or Edit Blog Post</h2>
+                </div>
+                <button class="ghost-button" id="reset-post-form" type="button">New post</button>
+              </div>
+              <form id="post-form" class="stacked-form">
+                <input id="post-id" type="hidden">
+                <label>
+                  Title
+                  <input id="post-title" required maxlength="140">
+                </label>
+                <label>
+                  Featured image URL
+                  <input id="post-image" type="url" required>
+                </label>
+                <div class="form-row">
+                  <label>
+                    Date
+                    <input id="post-date" type="date" required>
+                  </label>
+                  <label>
+                    Category
+                    <input id="post-category" placeholder="Review" required>
+                  </label>
+                </div>
+                <label>
+                  Tags
+                  <input id="post-tags" placeholder="frieren, fantasy, review">
+                </label>
+                <label>
+                  Content
+                  <textarea id="post-content" rows="12" required placeholder="Markdown or plain text"></textarea>
+                </label>
+                <button class="primary-button" id="save-post-button" type="submit">Publish post</button>
+              </form>
+              <p class="form-message" id="post-message" role="status"></p>
+            </section>
+
+            <section class="admin-card">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Generate AI Draft</p>
+                  <h2>Human-Journalist Draft</h2>
+                </div>
+              </div>
+              <p class="helper-text">OpenAI drafts usually cost about $0.002-$0.01 each. Gemini can be free on its free tier. Your key is saved only in this browser with localStorage.</p>
+              <form id="ai-form" class="stacked-form">
+                <div class="form-row">
+                  <label>
+                    Provider
+                    <select id="ai-provider">
+                      <option value="gemini">Gemini</option>
+                      <option value="openai">OpenAI</option>
+                    </select>
+                  </label>
+                  <label>
+                    API key
+                    <input id="ai-key" type="password" placeholder="Paste your key">
+                  </label>
+                </div>
+                <label>
+                  Anime title or topic
+                  <input id="ai-topic" placeholder="Why Frieren made me cry" required>
+                </label>
+                <button class="primary-button" id="generate-button" type="submit">Generate draft</button>
+              </form>
+              <div id="draft-panel" class="draft-panel hidden">
+                <label>
+                  Draft preview
+                  <textarea id="draft-text" rows="10"></textarea>
+                </label>
+                <div class="button-row">
+                  <button class="primary-button" id="publish-draft-button" type="button">Publish</button>
+                  <button class="ghost-button" id="discard-draft-button" type="button">Discard</button>
+                </div>
+              </div>
+              <p class="form-message" id="ai-message" role="status"></p>
+            </section>
+
+            <section class="admin-card">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Rankings</p>
+                  <h2>Create or Edit Ranking</h2>
+                </div>
+                <button class="ghost-button" id="reset-ranking-form" type="button">New ranking</button>
+              </div>
+              <form id="ranking-form" class="stacked-form">
+                <input id="ranking-id" type="hidden">
+                <div class="form-row">
+                  <label>
+                    Rank number
+                    <input id="ranking-rank" type="number" min="1" required>
+                  </label>
+                  <label>
+                    Rating out of 10
+                    <input id="ranking-rating" type="number" min="0" max="10" step="0.1" required>
+                  </label>
+                </div>
+                <label>
+                  Title
+                  <input id="ranking-title" required>
+                </label>
+                <label>
+                  Image URL
+                  <input id="ranking-image" type="url" required>
+                </label>
+                <label>
+                  Genre
+                  <input id="ranking-genre" placeholder="Dark Fantasy" required>
+                </label>
+                <label>
+                  Description
+                  <textarea id="ranking-description" rows="5" required></textarea>
+                </label>
+                <button class="primary-button" id="save-ranking-button" type="submit">Save ranking</button>
+              </form>
+              <p class="form-message" id="ranking-message" role="status"></p>
+            </section>
+
+            <section class="admin-card admin-list-card">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Manage</p>
+                  <h2>Existing Content</h2>
+                </div>
+              </div>
+              <div class="management-columns">
+                <div>
+                  <h3>Posts</h3>
+                  <div id="admin-posts-list" class="admin-list"></div>
+                </div>
+                <div>
+                  <h3>Rankings</h3>
+                  <div id="admin-rankings-list" class="admin-list"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
+
