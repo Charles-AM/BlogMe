@@ -32,7 +32,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 const page = document.body.dataset.page;
-const RECENT_POSTS_COLLAPSED_COUNT = 6;
+const RECENT_POSTS_COLLAPSED_COUNT = 3;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
 let homePosts = [];
 let currentRankings = [];
@@ -360,7 +360,7 @@ function renderPostCards(posts, options = {}) {
     const tags = clone.querySelector(".tag-row");
     const action = clone.querySelector(".read-chip");
     if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
-    if (index === 0 && posts.length > 1 && post.kind !== "recommendation") {
+    if (isExpanded && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
       card.classList.add("featured-post-card");
     }
     link.href = post.href || `index.html?post=${post.id}-${slugify(post.title)}`;
