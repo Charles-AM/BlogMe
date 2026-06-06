@@ -33,6 +33,21 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const page = document.body.dataset.page;
 const POSTS_PER_PAGE = 6;
+const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
+const ANIME_RADAR_CATEGORIES = {
+  popular: {
+    label: "Popular",
+    url: "https://api.jikan.moe/v4/top/anime?filter=bypopularity&sfw=true&limit=8"
+  },
+  trending: {
+    label: "Trending",
+    url: "https://api.jikan.moe/v4/top/anime?filter=airing&sfw=true&limit=8"
+  },
+  airing: {
+    label: "Currently Airing",
+    url: "https://api.jikan.moe/v4/seasons/now?sfw=true&limit=8"
+  }
+};
 let homePosts = [];
 let currentRankings = [];
 
@@ -427,27 +442,121 @@ function setupPostFilters(posts) {
   applyPostFilters();
 }
 
-function renderHomeRecommendations(rankings) {
-  const list = $("#home-recommendations-list");
-  const empty = $("#home-recommendations-empty");
-  const template = $("#home-recommendation-template");
+function readJikanCache(category, options = {}) {
+  try {
+    const raw = localStorage.getItem(`anime-radar:${category}`);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!options.allowStale && Date.now() - cached.createdAt > JIKAN_CACHE_TTL) return null;
+    return cached.items;
+  } catch {
+    return null;
+  }
+}
+
+function writeJikanCache(category, items) {
+  try {
+    localStorage.setItem(`anime-radar:${category}`, JSON.stringify({
+      createdAt: Date.now(),
+      items
+    }));
+  } catch {
+    // Storage can be unavailable in private browsing; the radar still works without cache.
+  }
+}
+
+async function fetchAnimeRadar(category) {
+  const config = ANIME_RADAR_CATEGORIES[category] || ANIME_RADAR_CATEGORIES.popular;
+  const cached = readJikanCache(category);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(config.url);
+    if (!response.ok) throw new Error(`Jikan request failed: ${response.status}`);
+    const payload = await response.json();
+    const items = (payload.data || []).slice(0, 8).map((anime) => ({
+      title: anime.title_english || anime.title || "Untitled anime",
+      imageUrl: anime.images?.webp?.large_image_url || anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || "",
+      url: anime.url || "https://myanimelist.net/",
+      score: anime.score,
+      type: anime.type,
+      episodes: anime.episodes,
+      status: anime.status,
+      year: anime.year
+    }));
+    writeJikanCache(category, items);
+    return items;
+  } catch (error) {
+    const stale = readJikanCache(category, { allowStale: true });
+    if (stale) return stale;
+    throw error;
+  }
+}
+
+function renderAnimeRadarCards(items = []) {
+  const list = $("#anime-radar-list");
+  const empty = $("#anime-radar-empty");
+  const template = $("#anime-radar-template");
   if (!list || !template) return;
 
-  const recommendationLists = buildRecommendationLists(rankings);
-  const topRankings = recommendationLists.slice(0, 3);
   list.innerHTML = "";
-  empty?.classList.toggle("hidden", topRankings.length > 0);
-
-  topRankings.forEach((item) => {
+  empty?.classList.toggle("hidden", items.length > 0);
+  items.forEach((anime) => {
     const clone = template.content.cloneNode(true);
-    clone.querySelector("img").src = item.imageUrl;
-    clone.querySelector("img").alt = item.title;
-    clone.querySelector(".rank-number").textContent = `${item.items.length} picks`;
-    clone.querySelector("h3").textContent = item.title;
-    clone.querySelector("p").textContent = item.content;
-    clone.querySelector(".mini-rec-card").href = item.href;
+    const card = clone.querySelector(".anime-radar-card");
+    const image = clone.querySelector("img");
+    const score = clone.querySelector(".anime-radar-score");
+    const details = [
+      anime.type,
+      anime.episodes ? `${anime.episodes} eps` : anime.status,
+      anime.year
+    ].filter(Boolean).slice(0, 2).join(" · ");
+
+    card.href = anime.url;
+    image.src = anime.imageUrl || "assets/regressed-ranker-hero.jpg";
+    image.alt = `${anime.title} cover art`;
+    score.textContent = anime.score ? `★ ${Number(anime.score).toFixed(1)}` : "New";
+    clone.querySelector("h3").textContent = anime.title;
+    clone.querySelector("p").textContent = details || "Anime";
     list.append(clone);
   });
+}
+
+async function loadAnimeRadar(category = "popular") {
+  const list = $("#anime-radar-list");
+  const empty = $("#anime-radar-empty");
+  if (!list) return;
+
+  list.setAttribute("aria-busy", "true");
+  empty?.classList.add("hidden");
+  try {
+    renderAnimeRadarCards(await fetchAnimeRadar(category));
+  } catch (error) {
+    console.error(error);
+    list.innerHTML = "";
+    empty?.classList.remove("hidden");
+  } finally {
+    list.setAttribute("aria-busy", "false");
+  }
+}
+
+function initAnimeRadar() {
+  const tabs = [...document.querySelectorAll(".radar-tab")];
+  if (!tabs.length) return;
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      tabs.forEach((item) => {
+        const isActive = item === tab;
+        item.classList.toggle("active", isActive);
+        item.setAttribute("aria-selected", String(isActive));
+      });
+      loadAnimeRadar(tab.dataset.radarCategory || "popular");
+    });
+  });
+
+  const activeTab = tabs.find((tab) => tab.classList.contains("active")) || tabs[0];
+  loadAnimeRadar(activeTab.dataset.radarCategory || "popular");
 }
 
 async function renderPostView(postId) {
@@ -473,9 +582,9 @@ async function renderPostView(postId) {
 }
 
 async function initHome() {
+  initAnimeRadar();
   if (!hasConfiguredFirebase()) {
     renderPostCards([]);
-    renderHomeRecommendations([]);
     return;
   }
   const params = new URLSearchParams(location.search);
@@ -487,7 +596,6 @@ async function initHome() {
   try {
     const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
     setupPostFilters(sortFeedItems([...posts, ...buildRecommendationLists(rankings)]));
-    renderHomeRecommendations(rankings);
   } catch (error) {
     console.error(error);
   }
