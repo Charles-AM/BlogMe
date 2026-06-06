@@ -34,20 +34,6 @@ const storage = getStorage(app);
 const page = document.body.dataset.page;
 const POSTS_PER_PAGE = 6;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
-const ANIME_RADAR_CATEGORIES = {
-  popular: {
-    label: "Popular",
-    url: "https://api.jikan.moe/v4/top/anime?filter=bypopularity&sfw=true&limit=8"
-  },
-  trending: {
-    label: "Trending",
-    url: "https://api.jikan.moe/v4/top/anime?filter=airing&sfw=true&limit=8"
-  },
-  airing: {
-    label: "Currently Airing",
-    url: "https://api.jikan.moe/v4/seasons/now?sfw=true&limit=8"
-  }
-};
 let homePosts = [];
 let currentRankings = [];
 
@@ -466,24 +452,14 @@ function writeJikanCache(category, items) {
 }
 
 async function fetchAnimeRadar(category) {
-  const config = ANIME_RADAR_CATEGORIES[category] || ANIME_RADAR_CATEGORIES.popular;
   const cached = readJikanCache(category);
   if (cached) return cached;
 
   try {
-    const response = await fetch(config.url);
-    if (!response.ok) throw new Error(`Jikan request failed: ${response.status}`);
+    const response = await fetch(`/.netlify/functions/anime-radar?category=${encodeURIComponent(category)}`);
+    if (!response.ok) throw new Error(`Anime radar proxy failed: ${response.status}`);
     const payload = await response.json();
-    const items = (payload.data || []).slice(0, 8).map((anime) => ({
-      title: anime.title_english || anime.title || "Untitled anime",
-      imageUrl: anime.images?.webp?.large_image_url || anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || "",
-      url: anime.url || "https://myanimelist.net/",
-      score: anime.score,
-      type: anime.type,
-      episodes: anime.episodes,
-      status: anime.status,
-      year: anime.year
-    }));
+    const items = Array.isArray(payload.data) ? payload.data : [];
     writeJikanCache(category, items);
     return items;
   } catch (error) {
