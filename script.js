@@ -532,17 +532,16 @@ async function initArchive() {
   });
 }
 
-function renderRankings(rankings, topic = "all", search = "") {
+function renderRankings(rankings, openTopic = "", search = "") {
   const list = $("#rankings-list");
   const empty = $("#rankings-empty");
   const template = $("#ranking-template");
   const term = search.trim().toLowerCase();
   const filtered = rankings.filter((item) => {
     const topicTitle = getRecommendationTopic(item);
-    const matchesTopic = topic === "all" || topicTitle === topic;
     const searchable = [item.title, topicTitle, item.genre, item.description].join(" ").toLowerCase();
     const matchesSearch = !term || searchable.includes(term);
-    return matchesTopic && matchesSearch;
+    return matchesSearch;
   });
 
   list.innerHTML = "";
@@ -552,16 +551,36 @@ function renderRankings(rankings, topic = "all", search = "") {
 
   sortRecommendationGroupEntries(Object.entries(groups)).forEach(([groupTitle, items]) => {
     const sortedItems = sortRecommendations(items);
+    const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
+    const summaryText = summaryTitles.length
+      ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
+      : "Open the list to view the full recommendations.";
     const group = document.createElement("section");
     group.className = "recommendation-group reveal-card";
     group.innerHTML = `
       <header class="recommendation-group-title">
-        <h2>${escapeHtml(groupTitle)}</h2>
-        <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
+        <div>
+          <h2>${escapeHtml(groupTitle)}</h2>
+          <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
+        </div>
+        <div class="recommendation-group-meta">
+          <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
+          <button class="recommendation-group-toggle" type="button" aria-expanded="false">Open list</button>
+        </div>
       </header>
-      <div class="recommendation-group-items"></div>
+      <div class="recommendation-group-items hidden"></div>
     `;
     const groupItems = group.querySelector(".recommendation-group-items");
+    const toggle = group.querySelector(".recommendation-group-toggle");
+
+    const setExpanded = (expanded) => {
+      group.classList.toggle("is-expanded", expanded);
+      groupItems.classList.toggle("hidden", !expanded);
+      toggle.textContent = expanded ? "Close list" : "Open list";
+      toggle.setAttribute("aria-expanded", String(expanded));
+    };
+
+    toggle.addEventListener("click", () => setExpanded(groupItems.classList.contains("hidden")));
 
     sortedItems.forEach((item) => {
       const clone = template.content.cloneNode(true);
@@ -587,77 +606,29 @@ function renderRankings(rankings, topic = "all", search = "") {
       groupItems.append(clone);
     });
 
+    if (openTopic && groupTitle === openTopic) setExpanded(true);
+
     list.append(group);
   });
 }
 
 async function initRankings() {
-  const filter = $("#genre-filter");
   const search = $("#recommendation-search");
-  const tabs = $("#topic-tabs");
   const params = new URLSearchParams(location.search);
   const requestedTopic = params.get("topic");
-  let activeTopic = requestedTopic || "all";
   if (!hasConfiguredFirebase()) {
     $("#rankings-empty").classList.remove("hidden");
     $("#rankings-empty p").textContent = "Add your Firebase config and saved rankings will appear here.";
     return;
   }
   currentRankings = await fetchRankings();
-  const populateTopics = () => {
-    const topics = sortRecommendationGroupEntries(Object.entries(groupRankingsByTopic(currentRankings)))
-      .map(([topic]) => topic);
-    if (!topics.includes(activeTopic)) activeTopic = "all";
+  const updateRankings = () => renderRankings(currentRankings, requestedTopic || "", search?.value || "");
 
-    if (filter) {
-      filter.innerHTML = '<option value="all">All topics</option>';
-      topics.forEach((topic) => {
-        const option = document.createElement("option");
-        option.value = topic;
-        option.textContent = topic;
-        filter.append(option);
-      });
-      filter.value = activeTopic;
-    }
-
-    if (!tabs) return;
-    tabs.innerHTML = "";
-    ["all", ...topics].forEach((topic) => {
-      const button = document.createElement("button");
-      const isActive = topic === activeTopic;
-      button.type = "button";
-      button.className = "topic-tab";
-      button.setAttribute("role", "tab");
-      button.setAttribute("aria-selected", String(isActive));
-      button.classList.toggle("active", isActive);
-      button.textContent = topic === "all" ? "All" : topic;
-      button.addEventListener("click", () => {
-        activeTopic = topic;
-        if (filter) filter.value = topic;
-        const url = new URL(window.location.href);
-        if (topic === "all") url.searchParams.delete("topic");
-        else url.searchParams.set("topic", topic);
-        history.replaceState(null, "", url);
-        populateTopics();
-        updateRankings();
-      });
-      tabs.append(button);
-    });
-  };
-  const updateRankings = () => renderRankings(currentRankings, activeTopic, search?.value || "");
-
-  populateTopics();
   updateRankings();
-  filter?.addEventListener("change", () => {
-    activeTopic = filter.value || "all";
-    populateTopics();
-    updateRankings();
-  });
   search?.addEventListener("input", updateRankings);
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
     currentRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
-    populateTopics();
     updateRankings();
   });
 }
