@@ -767,6 +767,14 @@ time {
   background: var(--accent);
 }
 
+.recent-posts-toggle {
+  justify-content: center;
+}
+
+.recent-posts-toggle button {
+  min-width: 190px;
+}
+
 .empty-state {
   padding: 34px;
   border: 1px dashed rgba(30, 34, 50, 0.16);

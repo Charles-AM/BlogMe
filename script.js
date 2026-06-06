@@ -32,10 +32,11 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 const page = document.body.dataset.page;
-const POSTS_PER_PAGE = 6;
+const RECENT_POSTS_COLLAPSED_COUNT = 4;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
 let homePosts = [];
 let currentRankings = [];
+let areRecentPostsExpanded = false;
 
 const AI_REVIEW_PROMPT =
   "Write a short anime review (150-300 words) as a passionate human journalist. Use short sentences, occasional humor, genuine emotion, and a natural voice. Avoid bullet points, lists, and formal language. Make it feel personal, like a friend recommending an anime. Do not include any AI-sounding phrases such as 'as an AI' or 'in conclusion'. Just write the review.";
@@ -339,19 +340,19 @@ async function fetchRankings() {
   return snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
 }
 
-function renderPostCards(posts, currentPage = 1) {
+function renderPostCards(posts, options = {}) {
   const grid = $("#posts-grid");
   const empty = $("#posts-empty");
   const pagination = $("#pagination");
   const template = $("#post-card-template");
+  const isExpanded = options.expanded ?? areRecentPostsExpanded;
+  const visiblePosts = isExpanded ? posts : posts.slice(0, RECENT_POSTS_COLLAPSED_COUNT);
 
   grid.innerHTML = "";
   pagination.innerHTML = "";
   empty.classList.toggle("hidden", posts.length > 0);
 
-  const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
-  const start = (currentPage - 1) * POSTS_PER_PAGE;
-  posts.slice(start, start + POSTS_PER_PAGE).forEach((post, index) => {
+  visiblePosts.forEach((post, index) => {
     const clone = template.content.cloneNode(true);
     const card = clone.querySelector(".post-card");
     const link = clone.querySelector("a");
@@ -359,7 +360,7 @@ function renderPostCards(posts, currentPage = 1) {
     const tags = clone.querySelector(".tag-row");
     const action = clone.querySelector(".read-chip");
     if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
-    if (currentPage === 1 && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
+    if (index === 0 && posts.length > 1 && post.kind !== "recommendation") {
       card.classList.add("featured-post-card");
     }
     link.href = post.href || `index.html?post=${post.id}-${slugify(post.title)}`;
@@ -378,12 +379,20 @@ function renderPostCards(posts, currentPage = 1) {
     grid.append(clone);
   });
 
-  for (let i = 1; i <= totalPages; i += 1) {
+  if (posts.length > RECENT_POSTS_COLLAPSED_COUNT) {
+    const hiddenCount = posts.length - RECENT_POSTS_COLLAPSED_COUNT;
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = i;
-    button.classList.toggle("active", i === currentPage);
-    button.addEventListener("click", () => renderPostCards(posts, i));
+    button.textContent = isExpanded ? "Show fewer posts" : `Show ${hiddenCount} more post${hiddenCount === 1 ? "" : "s"}`;
+    button.setAttribute("aria-controls", "posts-grid");
+    button.setAttribute("aria-expanded", String(isExpanded));
+    button.addEventListener("click", () => {
+      areRecentPostsExpanded = !isExpanded;
+      renderPostCards(posts, { expanded: areRecentPostsExpanded });
+      if (!areRecentPostsExpanded) {
+        grid.scrollIntoView({ block: "start", behavior: "smooth" });
+      }
+    });
     pagination.append(button);
   }
 }
@@ -417,6 +426,7 @@ function applyPostFilters() {
     const matchesCategory = category === "all" || post.category === category;
     return matchesSearch && matchesCategory;
   });
+  areRecentPostsExpanded = false;
   renderPostCards(filtered);
 }
 
