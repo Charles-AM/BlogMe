@@ -4,15 +4,18 @@ const STALE_TTL = 1000 * 60 * 60 * 24;
 const CATEGORIES = {
   popular: {
     label: "Popular",
-    url: "https://api.jikan.moe/v4/top/anime?filter=bypopularity&sfw=true&limit=8"
+    url: "https://api.jikan.moe/v4/top/anime?filter=bypopularity&sfw=true&limit=8",
+    fallbackUrl: "https://kitsu.io/api/edge/anime?sort=popularityRank&page[limit]=8"
   },
   trending: {
     label: "Trending",
-    url: "https://api.jikan.moe/v4/top/anime?filter=airing&sfw=true&limit=8"
+    url: "https://api.jikan.moe/v4/top/anime?filter=airing&sfw=true&limit=8",
+    fallbackUrl: "https://kitsu.io/api/edge/trending/anime?limit=8"
   },
   airing: {
     label: "Currently Airing",
-    url: "https://api.jikan.moe/v4/seasons/now?sfw=true&limit=8"
+    url: "https://api.jikan.moe/v4/seasons/now?sfw=true&limit=8",
+    fallbackUrl: "https://kitsu.io/api/edge/anime?filter[status]=current&sort=popularityRank&page[limit]=8"
   }
 };
 
@@ -42,6 +45,39 @@ function normalizeAnime(anime) {
     status: anime.status,
     year: anime.year
   };
+}
+
+function normalizeKitsuAnime(item) {
+  const anime = item.attributes || {};
+  const year = anime.startDate ? Number(anime.startDate.slice(0, 4)) : undefined;
+  const score = anime.averageRating ? Number(anime.averageRating) / 10 : undefined;
+
+  return {
+    title: anime.titles?.en || anime.titles?.en_jp || anime.canonicalTitle || "Untitled anime",
+    imageUrl: anime.posterImage?.large || anime.posterImage?.medium || anime.posterImage?.original || "",
+    url: anime.slug ? `https://kitsu.app/anime/${anime.slug}` : "https://kitsu.app/anime",
+    score,
+    type: anime.subtype ? anime.subtype.toUpperCase() : "Anime",
+    episodes: anime.episodeCount,
+    status: anime.status,
+    year
+  };
+}
+
+async function fetchKitsuFallback(config) {
+  const fallback = await fetch(config.fallbackUrl, {
+    headers: {
+      Accept: "application/vnd.api+json",
+      "User-Agent": "RegressedRanker/1.0 (+https://regressedranker.xyz)"
+    }
+  });
+
+  if (!fallback.ok) {
+    throw new Error(`Kitsu returned ${fallback.status}`);
+  }
+
+  const payload = await fallback.json();
+  return (payload.data || []).slice(0, 8).map(normalizeKitsuAnime);
 }
 
 async function getAnimeRadar(category) {
@@ -79,7 +115,18 @@ async function getAnimeRadar(category) {
     if (cached && now - cached.createdAt < STALE_TTL) {
       return { ...cached, source: "stale-cache", warning: error.message };
     }
-    throw error;
+
+    const data = await fetchKitsuFallback(config);
+    const fallback = {
+      category,
+      label: config.label,
+      createdAt: now,
+      data,
+      source: "kitsu-fallback",
+      warning: error.message
+    };
+    cache[category] = fallback;
+    return fallback;
   }
 }
 
