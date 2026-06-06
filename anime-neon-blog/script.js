@@ -104,6 +104,41 @@ function getRecommendationLabel(item = {}) {
   return item.genre || item.type || "Recommendation";
 }
 
+function getRankValue(item = {}) {
+  const rank = Number(item.rank);
+  return Number.isFinite(rank) && rank > 0 ? rank : Number.MAX_SAFE_INTEGER;
+}
+
+function getRatingValue(item = {}) {
+  const rating = Number(item.rating);
+  return Number.isFinite(rating) ? Math.min(Math.max(rating, 0), 10) : 0;
+}
+
+function sortRecommendations(items = []) {
+  return [...items].sort((a, b) => (
+    getRankValue(a) - getRankValue(b)
+    || getRatingValue(b) - getRatingValue(a)
+    || String(a.title || "").localeCompare(String(b.title || ""))
+  ));
+}
+
+function groupRankingsByTopic(rankings = []) {
+  return rankings.reduce((result, item) => {
+    const key = getRecommendationTopic(item);
+    result[key] = result[key] || [];
+    result[key].push(item);
+    return result;
+  }, {});
+}
+
+function sortRecommendationGroupEntries(entries = []) {
+  return [...entries].sort(([topicA, itemsA], [topicB, itemsB]) => {
+    const bestRankA = Math.min(...itemsA.map(getRankValue));
+    const bestRankB = Math.min(...itemsB.map(getRankValue));
+    return bestRankA - bestRankB || topicA.localeCompare(topicB);
+  });
+}
+
 function getRecommendationDate(items = []) {
   const dates = items
     .map((item) => item.updatedAt || item.createdAt || item.date)
@@ -114,15 +149,10 @@ function getRecommendationDate(items = []) {
 }
 
 function buildRecommendationLists(rankings = []) {
-  const groups = rankings.reduce((result, item) => {
-    const topic = getRecommendationTopic(item);
-    result[topic] = result[topic] || [];
-    result[topic].push(item);
-    return result;
-  }, {});
+  const groups = groupRankingsByTopic(rankings);
 
-  return Object.entries(groups).map(([topic, items]) => {
-    const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
+  return sortRecommendationGroupEntries(Object.entries(groups)).map(([topic, items]) => {
+    const sortedItems = sortRecommendations(items);
     const first = sortedItems[0] || {};
     const labels = [...new Set(sortedItems
       .map(getRecommendationLabel)
@@ -493,7 +523,6 @@ async function initArchive() {
       const li = document.createElement("li");
       li.innerHTML = `
         <a href="${escapeHtml(post.href || `index.html?post=${post.id}-${slugify(post.title)}`)}">
-          <time>${formatDate(post.date)}</time>
           <strong>${escapeHtml(post.title)}</strong>
         </a>
       `;
@@ -519,15 +548,10 @@ function renderRankings(rankings, topic = "all", search = "") {
   list.innerHTML = "";
   empty.classList.toggle("hidden", filtered.length > 0);
 
-  const groups = filtered.reduce((result, item) => {
-    const key = getRecommendationTopic(item);
-    result[key] = result[key] || [];
-    result[key].push(item);
-    return result;
-  }, {});
+  const groups = groupRankingsByTopic(filtered);
 
-  Object.entries(groups).forEach(([groupTitle, items]) => {
-    const sortedItems = [...items].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
+  sortRecommendationGroupEntries(Object.entries(groups)).forEach(([groupTitle, items]) => {
+    const sortedItems = sortRecommendations(items);
     const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
     const summaryText = summaryTitles.length
       ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
@@ -562,10 +586,12 @@ function renderRankings(rankings, topic = "all", search = "") {
     sortedItems.forEach((item) => {
       const clone = template.content.cloneNode(true);
       const row = clone.querySelector(".ranking-row");
-      clone.querySelector(".ranking-rank-badge").textContent = `#${item.rank}`;
-      clone.querySelector(".ranking-image").src = item.imageUrl;
-      clone.querySelector(".ranking-image").alt = item.title;
-      clone.querySelector("h3").textContent = item.title;
+      const rank = getRankValue(item);
+      const rating = getRatingValue(item);
+      clone.querySelector(".ranking-rank-badge").textContent = rank === Number.MAX_SAFE_INTEGER ? "#" : `#${rank}`;
+      clone.querySelector(".ranking-image").src = item.imageUrl || "assets/regressed-ranker-hero.jpg";
+      clone.querySelector(".ranking-image").alt = item.title || "Recommendation artwork";
+      clone.querySelector("h3").textContent = item.title || "Untitled recommendation";
       const label = getRecommendationLabel(item);
       const chip = clone.querySelector(".genre-chip");
       if (label && label !== groupTitle && label.length < 28) {
@@ -574,18 +600,9 @@ function renderRankings(rankings, topic = "all", search = "") {
         chip.remove();
       }
       clone.querySelector(".recommendation-description").innerHTML = parseShortText(item.description);
-      clone.querySelector(".rating-track span").style.width = `${Math.min(Number(item.rating) * 10, 100)}%`;
-      clone.querySelector(".rating-value").textContent = `${Number(item.rating).toFixed(1)}/10`;
-      row.tabIndex = 0;
-      row.setAttribute("role", "button");
-      row.setAttribute("aria-label", `${item.title} recommendation`);
-      row.addEventListener("click", () => row.classList.toggle("is-focused"));
-      row.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          row.classList.toggle("is-focused");
-        }
-      });
+      clone.querySelector(".rating-track span").style.width = `${rating * 10}%`;
+      clone.querySelector(".rating-value").textContent = `${rating.toFixed(1)}/10`;
+      row.setAttribute("aria-label", `${item.title || "Untitled"} recommendation`);
       groupItems.append(clone);
     });
 
@@ -596,8 +613,10 @@ function renderRankings(rankings, topic = "all", search = "") {
 async function initRankings() {
   const filter = $("#genre-filter");
   const search = $("#recommendation-search");
+  const tabs = $("#topic-tabs");
   const params = new URLSearchParams(location.search);
   const requestedTopic = params.get("topic");
+  let activeTopic = requestedTopic || "all";
   if (!hasConfiguredFirebase()) {
     $("#rankings-empty").classList.remove("hidden");
     $("#rankings-empty p").textContent = "Add your Firebase config and saved rankings will appear here.";
@@ -605,33 +624,59 @@ async function initRankings() {
   }
   currentRankings = await fetchRankings();
   const populateTopics = () => {
-    if (!filter) return;
-    const current = filter.value;
-    const topics = [...new Set(currentRankings.map(getRecommendationTopic).filter(Boolean))].sort();
-    filter.innerHTML = '<option value="all">All topics</option>';
-    topics.forEach((topic) => {
-      const option = document.createElement("option");
-      option.value = topic;
-      option.textContent = topic;
-      filter.append(option);
+    const topics = sortRecommendationGroupEntries(Object.entries(groupRankingsByTopic(currentRankings)))
+      .map(([topic]) => topic);
+    if (!topics.includes(activeTopic)) activeTopic = "all";
+
+    if (filter) {
+      filter.innerHTML = '<option value="all">All topics</option>';
+      topics.forEach((topic) => {
+        const option = document.createElement("option");
+        option.value = topic;
+        option.textContent = topic;
+        filter.append(option);
+      });
+      filter.value = activeTopic;
+    }
+
+    if (!tabs) return;
+    tabs.innerHTML = "";
+    ["all", ...topics].forEach((topic) => {
+      const button = document.createElement("button");
+      const isActive = topic === activeTopic;
+      button.type = "button";
+      button.className = "topic-tab";
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(isActive));
+      button.classList.toggle("active", isActive);
+      button.textContent = topic === "all" ? "All" : topic;
+      button.addEventListener("click", () => {
+        activeTopic = topic;
+        if (filter) filter.value = topic;
+        const url = new URL(window.location.href);
+        if (topic === "all") url.searchParams.delete("topic");
+        else url.searchParams.set("topic", topic);
+        history.replaceState(null, "", url);
+        populateTopics();
+        updateRankings();
+      });
+      tabs.append(button);
     });
-    filter.value = topics.includes(current) ? current : "all";
   };
+  const updateRankings = () => renderRankings(currentRankings, activeTopic, search?.value || "");
+
   populateTopics();
-  if (filter && requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
-    filter.value = requestedTopic;
-  }
-  const updateRankings = () => renderRankings(currentRankings, filter?.value || requestedTopic || "all", search?.value || "");
   updateRankings();
-  filter?.addEventListener("change", updateRankings);
+  filter?.addEventListener("change", () => {
+    activeTopic = filter.value || "all";
+    populateTopics();
+    updateRankings();
+  });
   search?.addEventListener("input", updateRankings);
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
     currentRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
     populateTopics();
-    if (filter && requestedTopic && [...filter.options].some((option) => option.value === requestedTopic)) {
-      filter.value = requestedTopic;
-    }
     updateRankings();
   });
 }
