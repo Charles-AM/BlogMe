@@ -880,9 +880,10 @@ time {
 
 .ranking-row {
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 0;
-  align-items: stretch;
+  grid-template-columns: clamp(8.5rem, 20vw, 11.5rem) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(248, 249, 252, 0.86);
@@ -908,8 +909,9 @@ time {
 .ranking-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 4;
   overflow: hidden;
+  border-radius: 14px;
   background: var(--soft);
 }
 
@@ -926,16 +928,17 @@ time {
 
 .ranking-rank-badge {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   display: grid;
-  width: 48px;
-  height: 48px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 8px;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 11px;
   color: #fff;
   font-weight: 900;
-  font-size: 1.2rem;
+  font-size: 1rem;
   background: linear-gradient(135deg, rgba(114, 87, 255, 0.94), rgba(94, 180, 255, 0.88));
   box-shadow: 0 8px 24px rgba(114, 87, 255, 0.28);
   backdrop-filter: blur(8px);
@@ -946,7 +949,8 @@ time {
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 10px;
-  padding: 14px;
+  align-self: stretch;
+  padding: 4px 4px 4px 0;
   min-width: 0;
 }
 
@@ -1518,14 +1522,14 @@ select:focus {
   .ranking-media {
     grid-column: 1 / -1;
     justify-self: center;
-    width: min(100%, 16rem);
-    max-width: 16rem;
-    height: auto;
-    aspect-ratio: 16 / 9;
+    width: min(100%, 12.5rem);
+    max-width: 12.5rem;
+    aspect-ratio: 3 / 4;
   }
 
   .ranking-copy {
     grid-column: 1 / -1;
+    padding: 0;
   }
 
   .rank-number {
