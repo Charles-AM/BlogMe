@@ -568,7 +568,8 @@ function renderRankings(rankings, topic = "all", search = "") {
       const row = clone.querySelector(".ranking-row");
       const rank = getRankValue(item);
       const rating = getRatingValue(item);
-      clone.querySelector(".rank-number").textContent = rank === Number.MAX_SAFE_INTEGER ? "#" : `#${rank}`;
+      const rankNumber = clone.querySelector(".rank-number");
+      if (rankNumber) rankNumber.textContent = rank === Number.MAX_SAFE_INTEGER ? "#" : `#${rank}`;
       clone.querySelector(".ranking-image").src = item.imageUrl || "assets/regressed-ranker-hero.jpg";
       clone.querySelector(".ranking-image").alt = item.title || "Recommendation artwork";
       clone.querySelector("h3").textContent = item.title || "Untitled recommendation";
