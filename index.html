@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Regressed Ranker is a clean anime blog for reviews, essays, and watch notes.">
+    <title>Regressed Ranker | Blog</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body data-page="home">
+    <div class="site-shell">
+      <header class="public-header">
+        <a class="brand" href="index.html" aria-label="Regressed Ranker home">
+          <span class="brand-mark">RR</span>
+          <span>
+            <strong>Regressed Ranker</strong>
+            <small>Anime · Manga · Manhua · Ranker</small>
+          </span>
+        </a>
+        <nav class="public-nav" aria-label="Primary navigation">
+          <a href="index.html" data-step="01" aria-current="page">Blog</a>
+          <a href="recommendations.html" data-step="02">Recommendations</a>
+          <a href="archive.html" data-step="03">Archive</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="home-hero">
+          <div class="hero-art">
+            <img src="assets/regressed-ranker-hero.jpg" alt="Regressed Ranker anime, manga, and manhua banner">
+            <div class="hero-glass">
+              <h1 class="visually-hidden">Regressed Ranker</h1>
+              <div class="quick-links" aria-label="Quick links">
+                <a class="primary-link" href="#posts-grid">Read posts</a>
+                <a href="recommendations.html">Recommendations</a>
+                <a href="archive.html">Archive</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-band">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Fresh Reads</p>
+              <h2>Recent Posts</h2>
+            </div>
+          </div>
+          <div class="post-tools" aria-label="Post filters">
+            <label class="search-field">
+              <span>Search</span>
+              <input id="post-search" type="search" placeholder="Search posts">
+            </label>
+            <label class="select-field">
+              <span>Category</span>
+              <select id="post-category-filter">
+                <option value="all">All categories</option>
+              </select>
+            </label>
+          </div>
+          <div class="blog-grid" id="posts-grid" aria-live="polite"></div>
+          <div class="empty-state hidden" id="posts-empty">
+            <h3>No posts yet</h3>
+            <p>Once Firestore has blog posts, they will appear here automatically.</p>
+          </div>
+          <div class="pagination" id="pagination"></div>
+        </section>
+
+        <section class="content-band recommendations-preview" id="home-recommendations">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Ranker</p>
+              <h2>Top Recommendations</h2>
+            </div>
+            <a class="ghost-button" href="recommendations.html">View all</a>
+          </div>
+          <div class="recommendation-strip" id="home-recommendations-list" aria-live="polite"></div>
+          <div class="empty-state hidden" id="home-recommendations-empty">
+            <h3>No recommendations yet</h3>
+            <p>Recommendations will show here automatically.</p>
+          </div>
+        </section>
+      </main>
+      <footer class="site-footer">
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </footer>
+    </div>
+
+    <template id="post-card-template">
+      <article class="post-card reveal-card">
+        <a class="post-card-link" href="#">
+          <div class="image-wrap">
+            <img alt="">
+            <span class="category-badge"></span>
+          </div>
+          <div class="post-card-body">
+            <time></time>
+            <h3></h3>
+            <p></p>
+            <div class="post-card-footer">
+              <div class="tag-row"></div>
+              <span class="read-chip">Open</span>
+            </div>
+          </div>
+        </a>
+      </article>
+    </template>
+
+    <template id="home-recommendation-template">
+      <a class="mini-rec-card reveal-card" href="recommendations.html">
+        <img alt="">
+        <div>
+          <span class="rank-number compact"></span>
+          <h3></h3>
+          <p></p>
+        </div>
+      </a>
+    </template>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>

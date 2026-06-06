@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /rr-vault-9k4m2.html
+
