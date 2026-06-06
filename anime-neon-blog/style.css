@@ -914,8 +914,8 @@ time {
 
 .ranking-row {
   display: grid;
-  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr) minmax(68px, auto);
-  gap: 14px;
+  grid-template-columns: minmax(145px, 190px) minmax(0, 1fr) minmax(68px, auto);
+  gap: 16px;
   align-items: center;
   padding: 10px;
   border: 1px solid var(--line);
@@ -946,7 +946,7 @@ time {
 .ranking-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--soft);
@@ -1369,7 +1369,7 @@ select:focus {
   }
 
   .ranking-row {
-    grid-template-columns: minmax(112px, 145px) minmax(0, 1fr);
+    grid-template-columns: minmax(135px, 170px) minmax(0, 1fr);
   }
 
   .ranking-actions {
