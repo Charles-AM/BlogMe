@@ -491,12 +491,45 @@ h2 {
   box-shadow: 0 18px 54px rgba(32, 37, 58, 0.13);
 }
 
+.recommendation-tools {
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  align-items: stretch;
+}
+
 .search-field,
 .select-field {
   gap: 6px;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.topic-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: center;
+  min-width: 0;
+}
+
+.topic-tab {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+  background: rgba(246, 247, 251, 0.82);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.topic-tab:hover,
+.topic-tab.active {
+  transform: translateY(-1px);
+  color: var(--text);
+  border-color: rgba(114, 87, 255, 0.34);
+  background: rgba(114, 87, 255, 0.12);
 }
 
 .status-pill {
@@ -872,14 +905,13 @@ time {
 
 .ranking-row {
   display: grid;
-  grid-template-columns: 54px minmax(128px, 170px) minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: stretch;
+  grid-template-columns: 50px minmax(116px, 150px) minmax(0, 1fr) minmax(72px, auto);
+  gap: 12px;
+  align-items: center;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(248, 249, 252, 0.86);
-  cursor: pointer;
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -893,8 +925,8 @@ time {
 
 .rank-number {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   border-radius: var(--radius);
   color: #fff;
@@ -925,7 +957,7 @@ time {
 .ranking-copy {
   display: grid;
   align-content: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -959,12 +991,20 @@ time {
 }
 
 .rating-value {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid rgba(114, 87, 255, 0.2);
+  border-radius: 999px;
   color: var(--accent);
   text-align: center;
+  white-space: nowrap;
 }
 
 .recommendation-description {
-  font-size: 1rem;
+  font-size: 0.96rem;
 }
 
 .recommendation-description ul {
@@ -1003,8 +1043,8 @@ time {
 
 .archive-group a {
   display: grid;
-  grid-template-columns: 130px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
   align-items: center;
   padding: 11px;
   border: 1px solid var(--line);
@@ -1313,14 +1353,17 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .recommendation-tools {
+    grid-template-columns: 1fr;
+  }
+
   .ranking-row {
     grid-template-columns: 48px minmax(120px, 150px) minmax(0, 1fr);
   }
 
   .ranking-actions {
     grid-column: 3;
-    grid-template-columns: 90px 1fr;
-    align-items: center;
+    justify-self: start;
   }
 }
 
@@ -1414,6 +1457,18 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .topic-tabs {
+    flex-wrap: nowrap;
+    margin-inline: -2px;
+    padding: 2px 2px 6px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .topic-tab {
+    flex: 0 0 auto;
+  }
+
   .trust-page {
     padding: 20px;
   }
@@ -1439,9 +1494,9 @@ select:focus {
 
   .ranking-media {
     grid-column: 1 / -1;
-    justify-self: center;
-    width: min(100%, 16rem);
-    max-width: 16rem;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
     height: auto;
     aspect-ratio: 16 / 9;
   }
@@ -1502,6 +1557,7 @@ select:focus {
 .status-pill,
 .genre-filter,
 .pagination button,
+.topic-tab,
 .ghost-button,
 input,
 textarea,
@@ -1594,6 +1650,14 @@ select {
   border-color: transparent;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   box-shadow: 0 16px 42px rgba(69, 247, 255, 0.2);
+}
+
+.topic-tab:hover,
+.topic-tab.active {
+  color: #050711;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 10px 26px rgba(69, 247, 255, 0.16);
 }
 
 .image-page-hero img {

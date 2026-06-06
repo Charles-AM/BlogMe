@@ -34,6 +34,13 @@
         </section>
 
         <section class="content-band">
+          <div class="post-tools recommendation-tools" aria-label="Recommendation filters">
+            <label class="search-field">
+              <span>Search</span>
+              <input id="recommendation-search" type="search" placeholder="Search recommendations">
+            </label>
+            <div class="topic-tabs" id="topic-tabs" role="tablist" aria-label="Recommendation topics"></div>
+          </div>
           <div class="leaderboard" id="rankings-list" aria-live="polite"></div>
           <div class="empty-state hidden" id="rankings-empty">
             <h3>No recommendations yet</h3>
