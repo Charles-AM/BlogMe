@@ -905,10 +905,10 @@ time {
 
 .ranking-row {
   display: grid;
-  grid-template-columns: 50px minmax(116px, 150px) minmax(0, 1fr) minmax(72px, auto);
-  gap: 12px;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr) minmax(68px, auto);
+  gap: 14px;
   align-items: center;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(248, 249, 252, 0.86);
@@ -937,7 +937,7 @@ time {
 .ranking-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--soft);
@@ -957,7 +957,7 @@ time {
 .ranking-copy {
   display: grid;
   align-content: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
 }
 
@@ -969,7 +969,7 @@ time {
 }
 
 .rating-track {
-  height: 8px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--soft);
@@ -992,19 +992,21 @@ time {
 
 .rating-value {
   display: inline-flex;
-  min-height: 34px;
+  min-height: 30px;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 0 9px;
   border: 1px solid rgba(114, 87, 255, 0.2);
   border-radius: 999px;
   color: var(--accent);
+  font-size: 0.86rem;
+  font-weight: 900;
   text-align: center;
   white-space: nowrap;
 }
 
 .recommendation-description {
-  font-size: 0.96rem;
+  font-size: 0.94rem;
 }
 
 .recommendation-description ul {
@@ -1358,11 +1360,11 @@ select:focus {
   }
 
   .ranking-row {
-    grid-template-columns: 48px minmax(120px, 150px) minmax(0, 1fr);
+    grid-template-columns: minmax(112px, 145px) minmax(0, 1fr);
   }
 
   .ranking-actions {
-    grid-column: 3;
+    grid-column: 2;
     justify-self: start;
   }
 }
@@ -1490,6 +1492,7 @@ select:focus {
 
   .ranking-row {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .ranking-media {
@@ -1512,6 +1515,7 @@ select:focus {
 
   .ranking-actions {
     grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .archive-group a {

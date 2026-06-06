@@ -552,43 +552,24 @@ function renderRankings(rankings, topic = "all", search = "") {
 
   sortRecommendationGroupEntries(Object.entries(groups)).forEach(([groupTitle, items]) => {
     const sortedItems = sortRecommendations(items);
-    const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
-    const summaryText = summaryTitles.length
-      ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
-      : "Open the list to view the full recommendations.";
     const group = document.createElement("section");
     group.className = "recommendation-group reveal-card";
     group.innerHTML = `
       <header class="recommendation-group-title">
-        <div>
-          <h2>${escapeHtml(groupTitle)}</h2>
-          <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
-        </div>
-        <div class="recommendation-group-meta">
-          <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
-          <button class="recommendation-group-toggle" type="button" aria-expanded="false">Open list</button>
-        </div>
+        <h2>${escapeHtml(groupTitle)}</h2>
+        <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
       </header>
-      <div class="recommendation-group-items hidden"></div>
+      <div class="recommendation-group-items"></div>
     `;
     const groupItems = group.querySelector(".recommendation-group-items");
-    const toggle = group.querySelector(".recommendation-group-toggle");
-
-    const setExpanded = (expanded) => {
-      group.classList.toggle("is-expanded", expanded);
-      groupItems.classList.toggle("hidden", !expanded);
-      toggle.textContent = expanded ? "Close list" : "Open list";
-      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
-    };
-
-    toggle.addEventListener("click", () => setExpanded(groupItems.classList.contains("hidden")));
 
     sortedItems.forEach((item) => {
       const clone = template.content.cloneNode(true);
       const row = clone.querySelector(".ranking-row");
       const rank = getRankValue(item);
       const rating = getRatingValue(item);
-      clone.querySelector(".ranking-rank-badge").textContent = rank === Number.MAX_SAFE_INTEGER ? "#" : `#${rank}`;
+      const rankNumber = clone.querySelector(".rank-number");
+      if (rankNumber) rankNumber.textContent = rank === Number.MAX_SAFE_INTEGER ? "#" : `#${rank}`;
       clone.querySelector(".ranking-image").src = item.imageUrl || "assets/regressed-ranker-hero.jpg";
       clone.querySelector(".ranking-image").alt = item.title || "Recommendation artwork";
       clone.querySelector("h3").textContent = item.title || "Untitled recommendation";
