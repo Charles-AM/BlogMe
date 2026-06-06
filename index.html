@@ -69,18 +69,22 @@
           <div class="pagination" id="pagination"></div>
         </section>
 
-        <section class="content-band recommendations-preview" id="home-recommendations">
+        <section class="content-band anime-radar" id="anime-radar">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Ranker</p>
-              <h2>Top Recommendations</h2>
+              <p class="eyebrow">Anime Radar</p>
+              <h2>Popular, trending, and airing now</h2>
             </div>
-            <a class="ghost-button" href="recommendations.html">View all</a>
+            <div class="radar-tabs" role="tablist" aria-label="Anime radar categories">
+              <button class="radar-tab active" type="button" data-radar-category="popular" aria-selected="true">Popular</button>
+              <button class="radar-tab" type="button" data-radar-category="trending" aria-selected="false">Trending</button>
+              <button class="radar-tab" type="button" data-radar-category="airing" aria-selected="false">Currently Airing</button>
+            </div>
           </div>
-          <div class="recommendation-strip" id="home-recommendations-list" aria-live="polite"></div>
-          <div class="empty-state hidden" id="home-recommendations-empty">
-            <h3>No recommendations yet</h3>
-            <p>Recommendations will show here automatically.</p>
+          <div class="anime-radar-grid" id="anime-radar-list" aria-live="polite"></div>
+          <div class="empty-state hidden" id="anime-radar-empty">
+            <h3>Anime radar is unavailable</h3>
+            <p>Jikan may be busy right now. Try refreshing in a moment.</p>
           </div>
         </section>
       </main>
@@ -112,14 +116,14 @@
       </article>
     </template>
 
-    <template id="home-recommendation-template">
-      <a class="mini-rec-card reveal-card" href="recommendations.html">
-        <img alt="">
-        <div>
-          <span class="rank-number compact"></span>
-          <h3></h3>
-          <p></p>
+    <template id="anime-radar-template">
+      <a class="anime-radar-card reveal-card" href="#" target="_blank" rel="noopener">
+        <div class="anime-radar-cover">
+          <img alt="">
+          <span class="anime-radar-score"></span>
         </div>
+        <h3></h3>
+        <p></p>
       </a>
     </template>
 
