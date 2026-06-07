@@ -1582,11 +1582,20 @@ select:focus {
   }
 
   .hero-glass {
-    inset-inline: 12px;
-    bottom: 12px;
+    position: static;
     width: auto;
+    margin-top: 12px;
     padding: 10px;
     border-radius: 16px;
+  }
+
+  .hero-glass .quick-links {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .hero-glass .quick-links a {
+    justify-content: center;
   }
 
   .blog-grid,
