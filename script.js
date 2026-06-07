@@ -9,9 +9,11 @@ import {
   deleteDoc,
   getDoc,
   getDocs,
+  getCountFromServer,
   onSnapshot,
   query,
   orderBy,
+  limit as queryLimit,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
@@ -33,6 +35,8 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const page = document.body.dataset.page;
 const RECENT_POSTS_COLLAPSED_COUNT = 3;
+const ANALYTICS_COLLECTION = "analyticsEvents";
+const ANALYTICS_RECENT_LIMIT = 500;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
 let homePosts = [];
 let currentRankings = [];
@@ -184,6 +188,89 @@ function showMessage(node, message, isError = false) {
   if (!node) return;
   node.textContent = message;
   node.classList.toggle("error", isError);
+}
+
+function dateKey(value = new Date()) {
+  return value.toISOString().slice(0, 10);
+}
+
+function monthKey(value = new Date()) {
+  return dateKey(value).slice(0, 7);
+}
+
+function getStoredId(key) {
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const next = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(key, next);
+    return next;
+  } catch {
+    return "storage-unavailable";
+  }
+}
+
+function getSessionId() {
+  try {
+    const key = "regressedRankerSessionId";
+    const existing = sessionStorage.getItem(key);
+    if (existing) return existing;
+    const next = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    sessionStorage.setItem(key, next);
+    return next;
+  } catch {
+    return "session-unavailable";
+  }
+}
+
+function getReferrerHost(referrer = "") {
+  if (!referrer) return "Direct";
+  try {
+    return new URL(referrer).hostname.replace(/^www\./, "") || "Direct";
+  } catch {
+    return "Direct";
+  }
+}
+
+function getDeviceType() {
+  if (matchMedia("(max-width: 640px)").matches) return "mobile";
+  if (matchMedia("(max-width: 920px)").matches) return "tablet";
+  return "desktop";
+}
+
+function shouldTrackAnalytics() {
+  const doNotTrack = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+  return hasConfiguredFirebase() && page !== "admin" && doNotTrack !== "1";
+}
+
+async function trackPageView(details = {}) {
+  if (!shouldTrackAnalytics()) return;
+  const now = new Date();
+  try {
+    await addDoc(collection(db, ANALYTICS_COLLECTION), {
+      type: "page_view",
+      page: page || "unknown",
+      path: location.pathname || "/",
+      query: location.search || "",
+      pageUrl: `${location.pathname || "/"}${location.search || ""}`,
+      title: details.title || document.title,
+      contentType: details.contentType || page || "page",
+      contentId: details.contentId || "",
+      contentTitle: details.contentTitle || "",
+      referrer: getReferrerHost(document.referrer),
+      referrerUrl: document.referrer ? document.referrer.slice(0, 240) : "",
+      visitorId: getStoredId("regressedRankerVisitorId"),
+      sessionId: getSessionId(),
+      device: getDeviceType(),
+      language: navigator.language || "",
+      dateKey: dateKey(now),
+      monthKey: monthKey(now),
+      createdAtClient: now.toISOString(),
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.warn("Analytics tracking skipped:", error?.code || error);
+  }
 }
 
 function authErrorMessage(error) {
@@ -565,6 +652,12 @@ async function renderPostView(postId) {
       <div class="post-content">${parseMarkdown(post.content)}</div>
     </article>
   `;
+  trackPageView({
+    contentType: "post",
+    contentId: post.id,
+    contentTitle: post.title,
+    title: `${post.title} | Regressed Ranker`
+  });
 }
 
 async function initHome() {
@@ -582,6 +675,7 @@ async function initHome() {
   try {
     const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
     setupPostFilters(sortFeedItems([...posts, ...buildRecommendationLists(rankings)]));
+    trackPageView({ contentType: "home", contentTitle: "Home" });
   } catch (error) {
     console.error(error);
   }
@@ -598,6 +692,7 @@ async function initArchive() {
   }
   const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
   const archiveItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
+  trackPageView({ contentType: "archive", contentTitle: "Archive" });
   empty.classList.toggle("hidden", archiveItems.length > 0);
   archive.innerHTML = "";
 
@@ -719,6 +814,10 @@ async function initRankings() {
   const updateRankings = () => renderRankings(currentRankings, requestedTopic || "", search?.value || "");
 
   updateRankings();
+  trackPageView({
+    contentType: requestedTopic ? "recommendation_topic" : "recommendations",
+    contentTitle: requestedTopic || "Recommendations"
+  });
   search?.addEventListener("input", updateRankings);
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
@@ -903,10 +1002,127 @@ function renderAdminRankings(rankings) {
   });
 }
 
+function setAnalyticsText(selector, value) {
+  const node = $(selector);
+  if (node) node.textContent = value;
+}
+
+function formatDateTime(value) {
+  return toDate(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function analyticsEventDate(event = {}) {
+  return toDate(event.createdAt || event.createdAtClient);
+}
+
+function analyticsPageLabel(event = {}) {
+  return event.contentTitle || event.pageUrl || event.path || "Unknown page";
+}
+
+function topAnalyticsEntries(events, getKey, limit = 5) {
+  const counts = events.reduce((result, event) => {
+    const key = getKey(event) || "Unknown";
+    result[key] = (result[key] || 0) + 1;
+    return result;
+  }, {});
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit);
+}
+
+function renderAnalyticsList(selector, entries, emptyText) {
+  const list = $(selector);
+  if (!list) return;
+  list.innerHTML = "";
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper-text";
+    empty.textContent = emptyText;
+    list.append(empty);
+    return;
+  }
+  entries.forEach(([label, count]) => {
+    const item = document.createElement("article");
+    item.className = "analytics-list-item";
+    item.innerHTML = `
+      <strong>${escapeHtml(label)}</strong>
+      <span>${count} view${count === 1 ? "" : "s"}</span>
+    `;
+    list.append(item);
+  });
+}
+
+function renderRecentAnalytics(events) {
+  const list = $("#analytics-recent");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!events.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper-text";
+    empty.textContent = "No page views have been recorded yet.";
+    list.append(empty);
+    return;
+  }
+  events.slice(0, 10).forEach((event) => {
+    const item = document.createElement("article");
+    item.className = "analytics-list-item";
+    const referrer = event.referrer && event.referrer !== "Direct" ? `from ${event.referrer}` : "direct visit";
+    item.innerHTML = `
+      <strong>${escapeHtml(analyticsPageLabel(event))}</strong>
+      <span>${escapeHtml(formatDateTime(event.createdAt || event.createdAtClient))} · ${escapeHtml(event.device || "device")} · ${escapeHtml(referrer)}</span>
+    `;
+    list.append(item);
+  });
+}
+
+function renderAdminAnalytics(events, totalViews) {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+  const today = dateKey(now);
+  const todayViews = events.filter((event) => event.dateKey === today).length;
+  const weekViews = events.filter((event) => analyticsEventDate(event) >= weekStart).length;
+  const recentVisitors = new Set(events.map((event) => event.visitorId).filter(Boolean)).size;
+
+  setAnalyticsText("#analytics-today", todayViews.toLocaleString());
+  setAnalyticsText("#analytics-week", weekViews.toLocaleString());
+  setAnalyticsText("#analytics-total", Number(totalViews || events.length).toLocaleString());
+  setAnalyticsText("#analytics-visitors", recentVisitors.toLocaleString());
+  renderAnalyticsList("#analytics-top-pages", topAnalyticsEntries(events, analyticsPageLabel), "No top pages yet.");
+  renderAnalyticsList("#analytics-referrers", topAnalyticsEntries(events, (event) => event.referrer || "Direct"), "No referrers yet.");
+  renderRecentAnalytics(events);
+}
+
+async function loadAdminAnalytics() {
+  if (!$("#analytics-message")) return;
+  showMessage($("#analytics-message"), "Loading analytics...");
+  try {
+    const analyticsCollection = collection(db, ANALYTICS_COLLECTION);
+    const [snapshot, countSnapshot] = await Promise.all([
+      getDocs(query(analyticsCollection, orderBy("createdAt", "desc"), queryLimit(ANALYTICS_RECENT_LIMIT))),
+      getCountFromServer(analyticsCollection)
+    ]);
+    const events = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
+    renderAdminAnalytics(events, countSnapshot.data().count);
+    showMessage($("#analytics-message"), events.length ? `Showing latest ${events.length} tracked views.` : "No visits recorded yet.");
+  } catch (error) {
+    console.error("Analytics load failed:", error);
+    showMessage($("#analytics-message"), "Could not load analytics. Check Firestore rules for analyticsEvents.", true);
+  }
+}
+
 function wireAdminData() {
   resetPostForm();
   $("#reset-post-form").onclick = resetPostForm;
   if ($("#reset-ranking-form")) $("#reset-ranking-form").onclick = resetRankingForm;
+  if ($("#refresh-analytics")) $("#refresh-analytics").onclick = loadAdminAnalytics;
+  loadAdminAnalytics();
   setupImagePaste($("#post-image"), "posts", $("#post-message"));
   setupImagePaste($("#ranking-image"), "recommendations", $("#ranking-message"));
 
@@ -1073,6 +1289,12 @@ if (page === "home") initHome();
 if (page === "rankings") initRankings().catch((error) => console.error(error));
 if (page === "archive") initArchive().catch((error) => console.error(error));
 if (page === "admin") initAdmin();
+if (!page) {
+  trackPageView({
+    contentType: "page",
+    contentTitle: document.title.split("|")[0].trim() || "Page"
+  });
+}
 
 /*
 One-time Firestore seed helper.

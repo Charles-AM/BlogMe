@@ -44,6 +44,49 @@
               <p class="helper-text">Tip: click an image field and paste an image to upload it. Firebase Storage must be enabled.</p>
             </section>
 
+            <section class="admin-card analytics-card">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Analytics</p>
+                  <h2>Visits & Reads</h2>
+                </div>
+                <button class="ghost-button" id="refresh-analytics" type="button">Refresh</button>
+              </div>
+              <div class="analytics-stats" aria-label="Site visit summary">
+                <article>
+                  <span>Today</span>
+                  <strong id="analytics-today">0</strong>
+                </article>
+                <article>
+                  <span>Last 7 days</span>
+                  <strong id="analytics-week">0</strong>
+                </article>
+                <article>
+                  <span>Total views</span>
+                  <strong id="analytics-total">0</strong>
+                </article>
+                <article>
+                  <span>Recent visitors</span>
+                  <strong id="analytics-visitors">0</strong>
+                </article>
+              </div>
+              <div class="analytics-columns">
+                <section>
+                  <h3>Top pages</h3>
+                  <div id="analytics-top-pages" class="analytics-list"></div>
+                </section>
+                <section>
+                  <h3>Referrers</h3>
+                  <div id="analytics-referrers" class="analytics-list"></div>
+                </section>
+              </div>
+              <section>
+                <h3>Recent views</h3>
+                <div id="analytics-recent" class="analytics-list analytics-recent-list"></div>
+              </section>
+              <p class="form-message" id="analytics-message" role="status"></p>
+            </section>
+
             <section class="admin-card">
               <div class="section-heading tight">
                 <div>
