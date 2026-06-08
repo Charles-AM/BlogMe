@@ -13,6 +13,8 @@
   --danger: #ff6680;
   --radius: 8px;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -22,6 +24,7 @@
 html {
   min-height: 100%;
   overflow-x: hidden;
+  scroll-behavior: smooth;
   background: var(--bg);
 }
 
@@ -1518,12 +1521,54 @@ select:focus {
 }
 
 .reveal-card {
-  animation: cardIn 320ms ease both;
+  animation: cardIn 380ms var(--ease-soft) both;
 }
 
 @keyframes cardIn {
   from {
     transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Small interaction polish: keep motion subtle, but less abrupt. */
+.public-nav a,
+.site-footer a,
+.quick-links a,
+.post-card,
+.anime-radar-card,
+.ranking-row,
+.mini-rec-card,
+.pagination button,
+.primary-button,
+.ghost-button,
+.radar-tab,
+.recommendation-group-toggle,
+.recommendation-back-link,
+.archive-group a,
+.read-chip {
+  transition-timing-function: var(--ease-standard);
+}
+
+.post-card img,
+.anime-radar-card img,
+.ranking-image,
+.quick-links a::after {
+  transition-duration: 260ms;
+  transition-timing-function: var(--ease-soft);
+}
+
+.recommendation-group-items:not(.hidden) {
+  animation: listReveal 220ms var(--ease-soft) both;
+}
+
+@keyframes listReveal {
+  from {
+    transform: translateY(-4px);
     opacity: 0;
   }
   to {
