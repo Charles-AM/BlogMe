@@ -793,6 +793,11 @@ time {
 .recommendation-group {
   display: grid;
   gap: 14px;
+  scroll-margin-top: 18px;
+}
+
+.recommendation-group:focus {
+  outline: none;
 }
 
 .recommendation-group-title {
@@ -844,8 +849,12 @@ time {
   background: rgba(114, 87, 255, 0.08);
 }
 
-.recommendation-group-toggle {
+.recommendation-group-toggle,
+.recommendation-back-link {
+  display: inline-flex;
   min-height: 36px;
+  align-items: center;
+  justify-content: center;
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -856,7 +865,8 @@ time {
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
-.recommendation-group-toggle:hover {
+.recommendation-group-toggle:hover,
+.recommendation-back-link:hover {
   transform: translateY(-1px);
   color: var(--accent);
   border-color: rgba(114, 87, 255, 0.34);
@@ -1783,6 +1793,7 @@ select:focus {
 .pagination button,
 .radar-tab,
 .recommendation-group-toggle,
+.recommendation-back-link,
 .ghost-button,
 input,
 textarea,
@@ -1892,7 +1903,8 @@ select {
   background: rgba(18, 18, 20, 0.86);
 }
 
-.recommendation-group-toggle:hover {
+.recommendation-group-toggle:hover,
+.recommendation-back-link:hover {
   color: #09090b;
   border-color: transparent;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));

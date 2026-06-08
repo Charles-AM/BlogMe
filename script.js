@@ -89,6 +89,14 @@ function slugify(value = "") {
     .replace(/^-|-$/g, "");
 }
 
+function getRecommendationGroupId(topic = "") {
+  return `recommendation-${slugify(topic) || "list"}`;
+}
+
+function getRecommendationListHref(topic = "") {
+  return `recommendations.html?topic=${encodeURIComponent(topic)}#${getRecommendationGroupId(topic)}`;
+}
+
 function excerpt(content = "", max = 150) {
   const plain = content.replace(/[#*_`>-]/g, "").replace(/\s+/g, " ").trim();
   return plain.length > max ? `${plain.slice(0, max).trim()}...` : plain;
@@ -175,7 +183,7 @@ function buildRecommendationLists(rankings = []) {
       category: "Recommendations",
       tags: labels,
       items: sortedItems,
-      href: `recommendations.html?topic=${encodeURIComponent(topic)}`
+      href: getRecommendationListHref(topic)
     };
   }).sort((a, b) => toDate(b.date) - toDate(a.date));
 }
@@ -642,7 +650,7 @@ async function renderPostView(postId) {
   const post = { id: snap.id, ...snap.data() };
   main.innerHTML = `
     <article class="post-view">
-      <a class="ghost-button" href="index.html">Back to posts</a>
+      <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
       <h1>${escapeHtml(post.title)}</h1>
       <div class="post-meta">
         <time>${formatDate(post.date)}</time>
@@ -652,6 +660,17 @@ async function renderPostView(postId) {
       <div class="post-content">${parseMarkdown(post.content)}</div>
     </article>
   `;
+  main.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
+    try {
+      const referrer = document.referrer ? new URL(document.referrer) : null;
+      if (referrer?.origin === location.origin && history.length > 1) {
+        event.preventDefault();
+        history.back();
+      }
+    } catch {
+      // Fall back to the href when the browser does not expose a same-site referrer.
+    }
+  });
   trackPageView({
     contentType: "post",
     contentId: post.id,
@@ -726,6 +745,7 @@ function renderRankings(rankings, openTopic = "", search = "") {
   const empty = $("#rankings-empty");
   const template = $("#ranking-template");
   const term = search.trim().toLowerCase();
+  let targetGroup = null;
   const filtered = rankings.filter((item) => {
     const topicTitle = getRecommendationTopic(item);
     const searchable = [item.title, topicTitle, item.genre, item.description].join(" ").toLowerCase();
@@ -738,14 +758,31 @@ function renderRankings(rankings, openTopic = "", search = "") {
 
   const groups = groupRankingsByTopic(filtered);
 
+  const collapseOtherGroups = (currentGroup) => {
+    list.querySelectorAll(".recommendation-group.is-expanded").forEach((openGroup) => {
+      if (openGroup === currentGroup) return;
+      openGroup.classList.remove("is-expanded");
+      openGroup.querySelector(".recommendation-group-items")?.classList.add("hidden");
+      const openToggle = openGroup.querySelector(".recommendation-group-toggle");
+      if (openToggle) {
+        openToggle.textContent = "Open list";
+        openToggle.setAttribute("aria-expanded", "false");
+      }
+      openGroup.querySelector(".recommendation-back-link")?.classList.add("hidden");
+    });
+  };
+
   sortRecommendationGroupEntries(Object.entries(groups)).forEach(([groupTitle, items]) => {
     const sortedItems = sortRecommendations(items);
+    const groupId = getRecommendationGroupId(groupTitle);
     const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
     const summaryText = summaryTitles.length
       ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
       : "Open the list to view the full recommendations.";
     const group = document.createElement("section");
     group.className = "recommendation-group reveal-card";
+    group.id = groupId;
+    group.tabIndex = -1;
     group.innerHTML = `
       <header class="recommendation-group-title">
         <div>
@@ -755,21 +792,40 @@ function renderRankings(rankings, openTopic = "", search = "") {
         <div class="recommendation-group-meta">
           <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
           <button class="recommendation-group-toggle" type="button" aria-expanded="false">Open list</button>
+          <a class="recommendation-back-link hidden" href="recommendations.html">Back to all lists</a>
         </div>
       </header>
       <div class="recommendation-group-items hidden"></div>
     `;
     const groupItems = group.querySelector(".recommendation-group-items");
     const toggle = group.querySelector(".recommendation-group-toggle");
+    const backLink = group.querySelector(".recommendation-back-link");
 
-    const setExpanded = (expanded) => {
+    const scrollToGroup = () => {
+      group.scrollIntoView({ block: "start", behavior: "smooth" });
+      group.focus({ preventScroll: true });
+    };
+
+    const setExpanded = (expanded, options = {}) => {
+      if (expanded) collapseOtherGroups(group);
       group.classList.toggle("is-expanded", expanded);
       groupItems.classList.toggle("hidden", !expanded);
       toggle.textContent = expanded ? "Close list" : "Open list";
       toggle.setAttribute("aria-expanded", String(expanded));
+      backLink.classList.toggle("hidden", !expanded);
+      if (options.updateUrl) {
+        history.pushState({}, "", expanded ? getRecommendationListHref(groupTitle) : "recommendations.html");
+      }
+      if (options.scroll) scrollToGroup();
     };
 
-    toggle.addEventListener("click", () => setExpanded(groupItems.classList.contains("hidden")));
+    toggle.addEventListener("click", () => {
+      setExpanded(groupItems.classList.contains("hidden"), { scroll: true, updateUrl: true });
+    });
+    backLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      setExpanded(false, { scroll: true, updateUrl: true });
+    });
 
     sortedItems.forEach((item) => {
       const clone = template.content.cloneNode(true);
@@ -795,23 +851,38 @@ function renderRankings(rankings, openTopic = "", search = "") {
       groupItems.append(clone);
     });
 
-    if (openTopic && groupTitle === openTopic) setExpanded(true);
+    if (openTopic && groupTitle === openTopic) {
+      setExpanded(true);
+      targetGroup = group;
+    }
 
     list.append(group);
   });
+
+  return targetGroup;
 }
 
 async function initRankings() {
   const search = $("#recommendation-search");
   const params = new URLSearchParams(location.search);
-  const requestedTopic = params.get("topic");
+  let requestedTopic = params.get("topic") || "";
+  let hasScrolledToRequestedTopic = false;
   if (!hasConfiguredFirebase()) {
     $("#rankings-empty").classList.remove("hidden");
     $("#rankings-empty p").textContent = "Add your Firebase config and saved rankings will appear here.";
     return;
   }
   currentRankings = await fetchRankings();
-  const updateRankings = () => renderRankings(currentRankings, requestedTopic || "", search?.value || "");
+  const updateRankings = () => {
+    const targetGroup = renderRankings(currentRankings, requestedTopic || "", search?.value || "");
+    if (targetGroup && !hasScrolledToRequestedTopic && !(search?.value || "").trim()) {
+      hasScrolledToRequestedTopic = true;
+      requestAnimationFrame(() => {
+        targetGroup.scrollIntoView({ block: "start", behavior: "smooth" });
+        targetGroup.focus({ preventScroll: true });
+      });
+    }
+  };
 
   updateRankings();
   trackPageView({
@@ -819,6 +890,11 @@ async function initRankings() {
     contentTitle: requestedTopic || "Recommendations"
   });
   search?.addEventListener("input", updateRankings);
+  window.addEventListener("popstate", () => {
+    requestedTopic = new URLSearchParams(location.search).get("topic") || "";
+    hasScrolledToRequestedTopic = false;
+    updateRankings();
+  });
 
   onSnapshot(query(collection(db, "rankings"), orderBy("rank", "asc")), (snapshot) => {
     currentRankings = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
