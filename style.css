@@ -10,6 +10,8 @@
   --accent: #0066cc;
   --accent-2: #004499;
   --accent-3: #3385d6;
+  --button: #1a1a1a;
+  --button-hover: #000000;
   --danger: #c62828;
   --radius: 8px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
@@ -93,8 +95,8 @@ button {
   border-radius: var(--radius);
   color: #fff;
   font-weight: 900;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 14px 34px rgba(0, 102, 204, 0.2);
+  background: var(--button);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
 }
 
 .brand strong {
@@ -309,8 +311,8 @@ h2 {
 .quick-links .primary-link {
   color: #fff;
   border-color: transparent;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 16px 42px rgba(0, 102, 204, 0.2);
+  background: var(--button);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.18);
 }
 
 .quick-links a:hover {
@@ -701,7 +703,7 @@ time {
 .post-card:hover .read-chip {
   transform: translateX(2px);
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: var(--button);
 }
 
 .pagination,
@@ -733,8 +735,12 @@ time {
 .primary-button {
   border-color: transparent;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 14px 34px rgba(0, 102, 204, 0.22);
+  background: var(--button);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+}
+
+.primary-button:hover {
+  background: var(--button-hover);
 }
 
 .primary-button:hover,
@@ -746,7 +752,8 @@ time {
 
 .pagination button.active {
   color: #fff;
-  background: var(--accent);
+  background: var(--button);
+  border-color: transparent;
 }
 
 .recent-posts-toggle {
@@ -1042,7 +1049,7 @@ time {
   border-radius: var(--radius);
   color: #fff;
   font-weight: 900;
-  background: linear-gradient(135deg, var(--accent), var(--accent-3));
+  background: var(--button);
 }
 
 .ranking-media {
@@ -1811,10 +1818,10 @@ h6 {
 }
 
 .brand-mark {
-  border: 1px solid rgba(0, 102, 204, 0.2);
+  border: 1px solid #000000;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 14px 34px rgba(0, 102, 204, 0.2);
+  background: var(--button);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
 }
 
 .public-nav,
@@ -1933,17 +1940,21 @@ select {
 .radar-tab.active {
   color: #ffffff;
   border-color: transparent;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 14px 34px rgba(0, 102, 204, 0.22);
+  background: var(--button);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
 }
 
+.quick-links .primary-link:hover,
+.primary-button:hover,
+.pagination button.active:hover,
+.radar-tab.active:hover,
 .radar-tab:hover,
 .recommendation-group-toggle:hover,
 .recommendation-back-link:hover {
   color: #ffffff;
   border-color: transparent;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 10px 26px rgba(0, 102, 204, 0.18);
+  background: var(--button-hover);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
 }
 
 .anime-radar-score {
