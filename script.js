@@ -102,6 +102,39 @@ function excerpt(content = "", max = 150) {
   return plain.length > max ? `${plain.slice(0, max).trim()}...` : plain;
 }
 
+function postShareUrl(post) {
+  return new URL(`index.html?post=${post.id}-${slugify(post.title)}`, location.href).href;
+}
+
+function wireShareButton(button, shareUrl, shareTitle) {
+  if (!button) return;
+  const defaultLabel = button.textContent || "Share";
+  button.addEventListener("click", async () => {
+    const url = shareUrl || location.href;
+    const title = shareTitle || document.title;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+        return;
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      button.textContent = "Link copied";
+      window.setTimeout(() => {
+        button.textContent = defaultLabel;
+      }, 2000);
+    } catch {
+      button.textContent = "Copy failed";
+      window.setTimeout(() => {
+        button.textContent = defaultLabel;
+      }, 2000);
+    }
+  });
+}
+
 function normalizeTags(tags) {
   if (Array.isArray(tags)) return tags;
   return String(tags || "")
@@ -648,18 +681,21 @@ async function renderPostView(postId) {
     return;
   }
   const post = { id: snap.id, ...snap.data() };
+  const shareUrl = postShareUrl(post);
   main.innerHTML = `
     <article class="post-view">
       <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
       <h1>${escapeHtml(post.title)}</h1>
       <div class="post-meta">
-        <time>${formatDate(post.date)}</time>
+        <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
         <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
+        <button type="button" class="ghost-button share-button" id="share-post-button">Share</button>
       </div>
       <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
       <div class="post-content">${parseMarkdown(post.content)}</div>
     </article>
   `;
+  wireShareButton($("#share-post-button"), shareUrl, post.title);
   main.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
     try {
       const referrer = document.referrer ? new URL(document.referrer) : null;
@@ -693,7 +729,8 @@ async function initHome() {
   }
   try {
     const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
-    setupPostFilters(sortFeedItems([...posts, ...buildRecommendationLists(rankings)]));
+    const allItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
+    setupPostFilters(allItems);
     trackPageView({ contentType: "home", contentTitle: "Home" });
   } catch (error) {
     console.error(error);

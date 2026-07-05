@@ -15,7 +15,7 @@
   --button-text: #000000;
   --danger: #ff6b7a;
   --radius: 8px;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -235,16 +235,19 @@ h2 {
   width: 100%;
   height: 100%;
   min-height: 0;
-  object-fit: contain;
-  object-position: center;
+  object-fit: cover;
+  object-position: center top;
 }
 
 .hero-art::after {
   position: absolute;
   inset: 0;
   content: "";
-  background: none;
   pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 22%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.72), transparent 48%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.18));
 }
 
 .hero-glass {
@@ -514,6 +517,26 @@ h2 {
 
 .featured-post-card {
   grid-column: span 8;
+  background: var(--surface-strong);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.52);
+}
+
+.featured-post-card::after {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 999px;
+  content: "Featured";
+  color: var(--button-text);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--button);
+  pointer-events: none;
 }
 
 .featured-post-card .image-wrap {
@@ -521,7 +544,12 @@ h2 {
 }
 
 .featured-post-card h3 {
-  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-size: clamp(1.55rem, 4vw, 2.65rem);
+  line-height: 1.12;
+}
+
+.featured-post-card .post-card-body {
+  padding: 20px 18px 18px;
 }
 
 .post-card,
@@ -548,21 +576,23 @@ h2 {
   z-index: -1;
   content: "";
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 38%),
-    radial-gradient(circle at 100% 0%, rgba(232, 93, 158, 0.14), transparent 13rem);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 38%),
+    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.05), transparent 13rem);
   opacity: 0;
   transition: opacity 180ms ease;
 }
 
 .post-card:hover,
 .ranking-row:hover,
-.mini-rec-card:hover {
+.mini-rec-card:hover,
+.anime-radar-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 26px 80px rgba(32, 37, 58, 0.16);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
 }
 
 .post-card:hover {
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.42);
 }
 
 .post-card:hover::before {
@@ -589,8 +619,10 @@ h2 {
   transition: transform 220ms ease;
 }
 
-.post-card:hover img {
-  transform: scale(1.04);
+.post-card:hover img,
+.anime-radar-card:hover img,
+.ranking-row:hover .ranking-image {
+  transform: scale(1.06);
 }
 
 .category-badge,
@@ -921,6 +953,8 @@ time {
 
 .anime-radar-card:hover {
   transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.52), inset 0 2px 0 rgba(255, 255, 255, 0.32);
 }
 
 .anime-radar-cover {
@@ -936,10 +970,6 @@ time {
   height: 100%;
   object-fit: cover;
   transition: transform 220ms ease;
-}
-
-.anime-radar-card:hover img {
-  transform: scale(1.04);
 }
 
 .anime-radar-score {
@@ -986,7 +1016,12 @@ time {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
-  transition: 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.mini-rec-card:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.32);
 }
 
 .mini-rec-card img {
@@ -1009,6 +1044,11 @@ time {
   font-size: 0.88rem;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.ranking-row:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.32);
 }
 
 .rank-number.compact {
@@ -1178,8 +1218,9 @@ time {
 }
 
 .post-view {
-  max-width: 860px;
+  max-width: 720px;
   margin: 40px auto 90px;
+  padding-inline: 0;
 }
 
 .post-view img {
@@ -1204,10 +1245,18 @@ time {
   color: var(--muted);
 }
 
+.share-button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 0.84rem;
+}
+
 .post-content {
   color: #ffffff;
-  font-size: 1.05rem;
-  line-height: 1.85;
+  font-size: 1.08rem;
+  line-height: 1.9;
+  letter-spacing: 0.01em;
 }
 
 .post-content h2,
@@ -1240,7 +1289,7 @@ time {
 }
 
 .post-content p {
-  margin: 0 0 18px;
+  margin: 0 0 20px;
   color: #ffffff;
 }
 
@@ -1715,10 +1764,6 @@ select:focus {
     min-height: 0;
   }
 
-  .hero-art::after {
-    background: none;
-  }
-
   .hero-glass {
     position: static;
     width: auto;
@@ -1747,6 +1792,28 @@ select:focus {
 
   .trust-page {
     padding: 20px;
+  }
+
+  .post-view {
+    margin: 24px auto 64px;
+  }
+
+  .post-view h1 {
+    font-size: clamp(1.85rem, 9vw, 2.8rem);
+    line-height: 1.08;
+  }
+
+  .post-content {
+    font-size: 1.12rem;
+    line-height: 1.88;
+  }
+
+  .post-meta {
+    gap: 8px;
+  }
+
+  .share-button {
+    min-height: 36px;
   }
 
   .blog-grid .post-card,
@@ -1860,8 +1927,23 @@ select,
 .admin-recommendation-item,
 .archive-group a,
 .site-footer a {
-  background: rgba(18, 18, 20, 0.92);
+  background: #121214;
   box-shadow: var(--shadow);
+}
+
+.featured-post-card {
+  background: #1a1a1c;
+}
+
+.post-tools,
+.admin-recommendation-group {
+  background: #1a1a1c;
+  box-shadow: var(--shadow);
+}
+
+.site-footer {
+  background: #0a0a0a;
+  border-top-color: var(--line);
 }
 
 .public-nav,
@@ -1882,17 +1964,6 @@ input,
 textarea,
 select {
   border-color: var(--line);
-}
-
-.site-footer {
-  background: var(--soft);
-  border-top-color: var(--line);
-}
-
-.post-tools,
-.admin-recommendation-group {
-  background: rgba(24, 24, 27, 0.92);
-  box-shadow: var(--shadow);
 }
 
 .public-nav a::before,
@@ -1933,10 +2004,6 @@ select {
   border-color: rgba(255, 255, 255, 0.12);
   background: #000000;
   box-shadow: 0 20px 64px rgba(0, 0, 0, 0.55);
-}
-
-.hero-art::after {
-  background: none;
 }
 
 .quick-links a {
@@ -1994,13 +2061,13 @@ select {
 .anime-radar-card:hover,
 .ranking-row:hover,
 .mini-rec-card:hover {
-  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.35);
 }
 
 .post-card:hover,
 .ranking-row:focus-visible,
 .ranking-row.is-focused {
-  border-color: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.32);
 }
 
 .ranking-row:focus-visible,
