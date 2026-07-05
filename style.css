@@ -1201,15 +1201,30 @@ time {
 }
 
 .archive-group a {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   align-items: center;
+  justify-content: space-between;
   padding: 11px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(18, 18, 20, 0.92);
   transition: 160ms ease;
+}
+
+.archive-read-time {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
 }
 
 .archive-group a:hover {
@@ -1262,6 +1277,11 @@ time {
   border-radius: var(--radius);
   background: #1a1a1c;
   box-shadow: var(--shadow);
+}
+
+.post-toolbar-bottom {
+  margin-top: 28px;
+  margin-bottom: 0;
 }
 
 .read-time-badge {

@@ -714,20 +714,26 @@ async function renderPostView(postId) {
   main.innerHTML = `
     <article class="post-view">
       <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
-      <div class="post-toolbar" role="toolbar" aria-label="Post tools">
-        <span class="read-time">${readTime}</span>
-        <button type="button" class="primary-button share-button" id="share-post-button">Share post</button>
-      </div>
       <h1>${escapeHtml(post.title)}</h1>
       <div class="post-meta">
         <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
         <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
       </div>
+      <div class="post-toolbar" role="toolbar" aria-label="Post tools">
+        <span class="read-time">${readTime}</span>
+        <button type="button" class="primary-button share-button">Share</button>
+      </div>
       <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
       <div class="post-content">${parseMarkdown(post.content)}</div>
+      <div class="post-toolbar post-toolbar-bottom" role="toolbar" aria-label="Share this post">
+        <span class="read-time">${readTime}</span>
+        <button type="button" class="primary-button share-button">Share</button>
+      </div>
     </article>
   `;
-  wireShareButton($("#share-post-button"), shareUrl, post.title);
+  main.querySelectorAll(".share-button").forEach((button) => {
+    wireShareButton(button, shareUrl, post.title);
+  });
   main.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
     try {
       const referrer = document.referrer ? new URL(document.referrer) : null;
@@ -761,9 +767,8 @@ async function initHome() {
     return;
   }
   try {
-    const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
-    const allItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
-    setupPostFilters(allItems);
+    const posts = await fetchPosts();
+    setupPostFilters(posts);
     trackPageView({ contentType: "home", contentTitle: "Home" });
   } catch (error) {
     console.error(error);
@@ -799,9 +804,13 @@ async function initArchive() {
     const list = section.querySelector("ul");
     monthPosts.forEach((post) => {
       const li = document.createElement("li");
+      const readTime = post.kind !== "recommendation" && post.content
+        ? `<span class="archive-read-time">${estimateReadTime(post.content)}</span>`
+        : "";
       li.innerHTML = `
         <a href="${escapeHtml(post.href || postHref(post))}">
           <strong>${escapeHtml(post.title)}</strong>
+          ${readTime}
         </a>
       `;
       list.append(li);
