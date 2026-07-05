@@ -38,6 +38,8 @@ const RECENT_POSTS_COLLAPSED_COUNT = 3;
 const ANALYTICS_COLLECTION = "analyticsEvents";
 const ANALYTICS_RECENT_LIMIT = 500;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
+const WORDS_PER_MINUTE = 225;
+const MAX_READ_MINUTES = 5;
 let homePosts = [];
 let currentRankings = [];
 let areRecentPostsExpanded = false;
@@ -104,6 +106,13 @@ function excerpt(content = "", max = 150) {
 
 function postShareUrl(post) {
   return new URL(`index.html?post=${post.id}-${slugify(post.title)}`, location.href).href;
+}
+
+function estimateReadTime(content = "", wordsPerMinute = WORDS_PER_MINUTE) {
+  const words = String(content).trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.ceil(words / wordsPerMinute));
+  const displayMinutes = Math.min(minutes, MAX_READ_MINUTES);
+  return `${displayMinutes} min read`;
 }
 
 function wireShareButton(button, shareUrl, shareTitle) {
@@ -682,12 +691,14 @@ async function renderPostView(postId) {
   }
   const post = { id: snap.id, ...snap.data() };
   const shareUrl = postShareUrl(post);
+  const readTime = estimateReadTime(post.content);
   main.innerHTML = `
     <article class="post-view">
       <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
       <h1>${escapeHtml(post.title)}</h1>
       <div class="post-meta">
         <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
+        <span class="read-time">${readTime}</span>
         <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
         <button type="button" class="ghost-button share-button" id="share-post-button">Share</button>
       </div>
