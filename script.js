@@ -38,8 +38,6 @@ const RECENT_POSTS_COLLAPSED_COUNT = 3;
 const ANALYTICS_COLLECTION = "analyticsEvents";
 const ANALYTICS_RECENT_LIMIT = 500;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
-const WORDS_PER_MINUTE = 225;
-const MAX_READ_MINUTES = 5;
 let homePosts = [];
 let currentRankings = [];
 let areRecentPostsExpanded = false;
@@ -104,10 +102,6 @@ function excerpt(content = "", max = 150) {
   return plain.length > max ? `${plain.slice(0, max).trim()}...` : plain;
 }
 
-function postShareUrl(post) {
-  return new URL(`index.html?post=${encodeURIComponent(post.id)}`, location.href).href;
-}
-
 function postHref(post) {
   return `index.html?post=${encodeURIComponent(post.id)}`;
 }
@@ -118,42 +112,6 @@ function parsePostIdFromParam(postParam = "") {
   // Legacy links used `?post={id}-{slug}`; IDs do not include hyphens.
   const hyphenIndex = decoded.indexOf("-");
   return hyphenIndex === -1 ? decoded : decoded.slice(0, hyphenIndex);
-}
-
-function estimateReadTime(content = "", wordsPerMinute = WORDS_PER_MINUTE) {
-  const words = String(content).trim().split(/\s+/).filter(Boolean).length;
-  const minutes = Math.max(1, Math.ceil(words / wordsPerMinute));
-  const displayMinutes = Math.min(minutes, MAX_READ_MINUTES);
-  return `${displayMinutes} min read`;
-}
-
-function wireShareButton(button, shareUrl, shareTitle) {
-  if (!button) return;
-  const defaultLabel = button.textContent || "Share";
-  button.addEventListener("click", async () => {
-    const url = shareUrl || location.href;
-    const title = shareTitle || document.title;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title, url });
-        return;
-      }
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      button.textContent = "Link copied";
-      window.setTimeout(() => {
-        button.textContent = defaultLabel;
-      }, 2000);
-    } catch {
-      button.textContent = "Copy failed";
-      window.setTimeout(() => {
-        button.textContent = defaultLabel;
-      }, 2000);
-    }
-  });
 }
 
 function normalizeTags(tags) {
@@ -520,13 +478,6 @@ function renderPostCards(posts, options = {}) {
     clone.querySelector("h3").textContent = post.title;
     clone.querySelector("p").textContent = excerpt(post.content);
     if (action) action.textContent = post.kind === "recommendation" ? "Open list" : "Read";
-    const footer = clone.querySelector(".post-card-footer");
-    if (footer && post.kind !== "recommendation" && post.content) {
-      const readBadge = document.createElement("span");
-      readBadge.className = "read-time-badge";
-      readBadge.textContent = estimateReadTime(post.content);
-      footer.insertBefore(readBadge, action);
-    }
     normalizeTags(post.tags).slice(0, 3).forEach((tag) => {
       const item = document.createElement("span");
       item.textContent = tag;
@@ -709,8 +660,6 @@ async function renderPostView(postId) {
     return;
   }
   const post = { id: snap.id, ...snap.data() };
-  const shareUrl = postShareUrl(post);
-  const readTime = estimateReadTime(post.content);
   main.innerHTML = `
     <article class="post-view">
       <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
@@ -719,21 +668,10 @@ async function renderPostView(postId) {
         <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
         <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
       </div>
-      <div class="post-toolbar" role="toolbar" aria-label="Post tools">
-        <span class="read-time">${readTime}</span>
-        <button type="button" class="primary-button share-button">Share</button>
-      </div>
       <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
       <div class="post-content">${parseMarkdown(post.content)}</div>
-      <div class="post-toolbar post-toolbar-bottom" role="toolbar" aria-label="Share this post">
-        <span class="read-time">${readTime}</span>
-        <button type="button" class="primary-button share-button">Share</button>
-      </div>
     </article>
   `;
-  main.querySelectorAll(".share-button").forEach((button) => {
-    wireShareButton(button, shareUrl, post.title);
-  });
   main.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
     try {
       const referrer = document.referrer ? new URL(document.referrer) : null;
@@ -804,13 +742,9 @@ async function initArchive() {
     const list = section.querySelector("ul");
     monthPosts.forEach((post) => {
       const li = document.createElement("li");
-      const readTime = post.kind !== "recommendation" && post.content
-        ? `<span class="archive-read-time">${estimateReadTime(post.content)}</span>`
-        : "";
       li.innerHTML = `
         <a href="${escapeHtml(post.href || postHref(post))}">
           <strong>${escapeHtml(post.title)}</strong>
-          ${readTime}
         </a>
       `;
       list.append(li);
