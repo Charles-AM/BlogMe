@@ -1245,8 +1245,25 @@ time {
   color: var(--muted);
 }
 
+.read-time,
 .share-button {
   flex: 0 0 auto;
+}
+
+.read-time {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.share-button {
   min-height: 34px;
   padding-inline: 12px;
   font-size: 0.84rem;
@@ -1812,6 +1829,7 @@ select:focus {
     gap: 8px;
   }
 
+  .read-time,
   .share-button {
     min-height: 36px;
   }
