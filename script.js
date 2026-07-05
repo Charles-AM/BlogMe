@@ -36,12 +36,8 @@ const storage = getStorage(app);
 const page = document.body.dataset.page;
 const RECENT_POSTS_COLLAPSED_COUNT = 3;
 const ANALYTICS_COLLECTION = "analyticsEvents";
-const POST_STATS_COLLECTION = "postStats";
-const NEWSLETTER_COLLECTION = "newsletterSubscribers";
 const ANALYTICS_RECENT_LIMIT = 500;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
-const SITE_URL = "https://regressedranker.xyz";
-const WORDS_PER_MINUTE = 225;
 let homePosts = [];
 let currentRankings = [];
 let areRecentPostsExpanded = false;
@@ -106,130 +102,8 @@ function excerpt(content = "", max = 150) {
   return plain.length > max ? `${plain.slice(0, max).trim()}...` : plain;
 }
 
-function estimateReadTime(content = "", wordsPerMinute = WORDS_PER_MINUTE) {
-  const words = String(content).trim().split(/\s+/).filter(Boolean).length;
-  const minutes = Math.max(1, Math.ceil(words / wordsPerMinute));
-  return `${minutes} min read`;
-}
-
-function absoluteUrl(path = "") {
-  if (String(path).startsWith("http")) return path;
-  const normalized = String(path).startsWith("/") ? path : `/${path}`;
-  return `${SITE_URL}${normalized}`;
-}
-
-function setMetaTag(attribute, key, content) {
-  if (!content) return;
-  let element = document.head.querySelector(`meta[${attribute}="${key}"]`);
-  if (!element) {
-    element = document.createElement("meta");
-    element.setAttribute(attribute, key);
-    document.head.appendChild(element);
-  }
-  element.setAttribute("content", content);
-}
-
-function setPageMeta({
-  title,
-  description,
-  image,
-  url,
-  type = "website"
-} = {}) {
-  const pageTitle = title || document.title;
-  const pageDescription = description || document.querySelector('meta[name="description"]')?.content || "";
-  const pageUrl = url || absoluteUrl(`${location.pathname}${location.search}`);
-  const pageImage = image || absoluteUrl("/assets/regressed-ranker-hero.jpg");
-
-  document.title = pageTitle;
-  setMetaTag("name", "description", pageDescription);
-  setMetaTag("property", "og:title", pageTitle);
-  setMetaTag("property", "og:description", pageDescription);
-  setMetaTag("property", "og:image", pageImage);
-  setMetaTag("property", "og:url", pageUrl);
-  setMetaTag("property", "og:type", type);
-  setMetaTag("property", "og:site_name", "Regressed Ranker");
-  setMetaTag("name", "twitter:card", "summary_large_image");
-  setMetaTag("name", "twitter:title", pageTitle);
-  setMetaTag("name", "twitter:description", pageDescription);
-  setMetaTag("name", "twitter:image", pageImage);
-}
-
-async function incrementPostStats(postId, title, now = new Date()) {
-  if (!postId || !hasConfiguredFirebase()) return;
-  try {
-    const statsRef = doc(db, POST_STATS_COLLECTION, postId);
-    const snapshot = await getDoc(statsRef);
-    const currentMonth = monthKey(now);
-    if (!snapshot.exists()) {
-      await setDoc(statsRef, {
-        postId,
-        title: title || "",
-        viewCount: 1,
-        monthViews: 1,
-        monthKey: currentMonth,
-        lastViewedAt: now.toISOString()
-      });
-      return;
-    }
-    const data = snapshot.data();
-    const sameMonth = data.monthKey === currentMonth;
-    await setDoc(statsRef, {
-      postId,
-      title: title || data.title || "",
-      viewCount: (data.viewCount || 0) + 1,
-      monthViews: sameMonth ? (data.monthViews || 0) + 1 : 1,
-      monthKey: currentMonth,
-      lastViewedAt: now.toISOString()
-    }, { merge: true });
-  } catch (error) {
-    console.warn("Post stats update skipped:", error?.code || error);
-  }
-}
-
-async function fetchPopularPosts(allFeedItems = [], limit = 3) {
-  if (!hasConfiguredFirebase()) return [];
-  try {
-    const snapshot = await getDocs(collection(db, POST_STATS_COLLECTION));
-    const currentMonth = monthKey(new Date());
-    const stats = snapshot.docs
-      .map((document) => ({ id: document.id, ...document.data() }))
-      .filter((item) => item.monthKey === currentMonth && (item.monthViews || 0) > 0)
-      .sort((a, b) => (b.monthViews || 0) - (a.monthViews || 0))
-      .slice(0, limit);
-
-    return stats.map((stat) => {
-      const post = allFeedItems.find((item) => item.id === stat.postId && item.kind !== "recommendation");
-      if (!post) return null;
-      return { ...post, monthViews: stat.monthViews };
-    }).filter(Boolean);
-  } catch (error) {
-    console.warn("Popular posts unavailable:", error?.code || error);
-    return [];
-  }
-}
-
-function renderPopularPosts(posts = []) {
-  const section = $("#popular-posts-section");
-  const grid = $("#popular-posts-grid");
-  if (!section || !grid) return;
-  if (!posts.length) {
-    section.classList.add("hidden");
-    return;
-  }
-  section.classList.remove("hidden");
-  grid.innerHTML = posts.map((post, index) => `
-    <article class="popular-post-card reveal-card">
-      <a class="popular-post-link" href="${escapeHtml(post.href || `index.html?post=${post.id}-${slugify(post.title)}`)}">
-        <span class="popular-rank">#${index + 1}</span>
-        <div class="popular-post-copy">
-          <h3>${escapeHtml(post.title)}</h3>
-          <p>${escapeHtml(excerpt(post.content, 110))}</p>
-          <span class="popular-post-views">${post.monthViews} view${post.monthViews === 1 ? "" : "s"} this month</span>
-        </div>
-      </a>
-    </article>
-  `).join("");
+function postShareUrl(post) {
+  return new URL(`index.html?post=${post.id}-${slugify(post.title)}`, location.href).href;
 }
 
 function wireShareButton(button, shareUrl, shareTitle) {
@@ -257,41 +131,6 @@ function wireShareButton(button, shareUrl, shareTitle) {
       window.setTimeout(() => {
         button.textContent = defaultLabel;
       }, 2000);
-    }
-  });
-}
-
-function initNewsletterForm() {
-  const form = $("#newsletter-form");
-  const message = $("#newsletter-message");
-  if (!form) return;
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const input = form.querySelector('input[type="email"]');
-    const email = input?.value?.trim().toLowerCase();
-    if (!email) return;
-    const button = form.querySelector("button");
-    setLoading(button, "Saving...", true);
-    try {
-      if (!hasConfiguredFirebase()) throw new Error("Firebase not configured");
-      await addDoc(collection(db, NEWSLETTER_COLLECTION), {
-        email,
-        source: page || location.pathname,
-        createdAtClient: new Date().toISOString(),
-        createdAt: serverTimestamp()
-      });
-      if (message) {
-        message.textContent = "Subscribed. You will only hear about new posts.";
-        message.classList.remove("error");
-      }
-      form.reset();
-    } catch (error) {
-      if (message) {
-        message.textContent = "Could not subscribe right now. Try again later.";
-        message.classList.add("error");
-      }
-    } finally {
-      setLoading(button, "Subscribe", false);
     }
   });
 }
@@ -470,9 +309,6 @@ async function trackPageView(details = {}) {
       createdAtClient: now.toISOString(),
       createdAt: serverTimestamp()
     });
-    if (details.contentType === "post" && details.contentId) {
-      incrementPostStats(details.contentId, details.contentTitle, now);
-    }
   } catch (error) {
     console.warn("Analytics tracking skipped:", error?.code || error);
   }
@@ -845,15 +681,13 @@ async function renderPostView(postId) {
     return;
   }
   const post = { id: snap.id, ...snap.data() };
-  const readTime = estimateReadTime(post.content);
-  const postUrl = absoluteUrl(`index.html?post=${post.id}-${slugify(post.title)}`);
+  const shareUrl = postShareUrl(post);
   main.innerHTML = `
     <article class="post-view">
       <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
       <h1>${escapeHtml(post.title)}</h1>
       <div class="post-meta">
         <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
-        <span class="read-time">${readTime}</span>
         <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
         <button type="button" class="ghost-button share-button" id="share-post-button">Share</button>
       </div>
@@ -861,14 +695,7 @@ async function renderPostView(postId) {
       <div class="post-content">${parseMarkdown(post.content)}</div>
     </article>
   `;
-  wireShareButton($("#share-post-button"), postUrl, post.title);
-  setPageMeta({
-    title: `${post.title} | Regressed Ranker`,
-    description: excerpt(post.content, 160),
-    image: post.imageUrl,
-    url: postUrl,
-    type: "article"
-  });
+  wireShareButton($("#share-post-button"), shareUrl, post.title);
   main.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
     try {
       const referrer = document.referrer ? new URL(document.referrer) : null;
@@ -892,12 +719,6 @@ async function initHome() {
   initAnimeRadar();
   if (!hasConfiguredFirebase()) {
     renderPostCards([]);
-    renderPopularPosts([]);
-    setPageMeta({
-      title: "Regressed Ranker | Home",
-      description: "Regressed Ranker is a clean anime blog for reviews, essays, and watch notes.",
-      url: absoluteUrl("/index.html")
-    });
     return;
   }
   const params = new URLSearchParams(location.search);
@@ -909,14 +730,7 @@ async function initHome() {
   try {
     const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
     const allItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
-    renderPopularPosts(await fetchPopularPosts(allItems));
     setupPostFilters(allItems);
-    setPageMeta({
-      title: "Regressed Ranker | Home",
-      description: "Regressed Ranker is a clean anime blog for reviews, essays, and watch notes.",
-      url: absoluteUrl("/index.html"),
-      type: "website"
-    });
     trackPageView({ contentType: "home", contentTitle: "Home" });
   } catch (error) {
     console.error(error);
@@ -934,11 +748,6 @@ async function initArchive() {
   }
   const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
   const archiveItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
-  setPageMeta({
-    title: "All Posts | Regressed Ranker",
-    description: "Browse every post and recommendation list from Regressed Ranker.",
-    url: absoluteUrl("/archive.html")
-  });
   trackPageView({ contentType: "archive", contentTitle: "Archive" });
   empty.classList.toggle("hidden", archiveItems.length > 0);
   archive.innerHTML = "";
@@ -1113,11 +922,6 @@ async function initRankings() {
   };
 
   updateRankings();
-  setPageMeta({
-    title: "Recommendations | Regressed Ranker",
-    description: "Anime, manga, and manhua recommendations from Regressed Ranker.",
-    url: absoluteUrl(`/recommendations.html${location.search}`)
-  });
   trackPageView({
     contentType: requestedTopic ? "recommendation_topic" : "recommendations",
     contentTitle: requestedTopic || "Recommendations"
@@ -1598,13 +1402,7 @@ if (page === "home") initHome();
 if (page === "rankings") initRankings().catch((error) => console.error(error));
 if (page === "archive") initArchive().catch((error) => console.error(error));
 if (page === "admin") initAdmin();
-initNewsletterForm();
 if (!page) {
-  setPageMeta({
-    title: document.title,
-    description: document.querySelector('meta[name="description"]')?.content || "",
-    url: absoluteUrl(`${location.pathname}${location.search}`)
-  });
   trackPageView({
     contentType: "page",
     contentTitle: document.title.split("|")[0].trim() || "Page"

@@ -1,11 +1,6 @@
 [build]
   publish = "."
 
-[[redirects]]
-  from = "/feed.xml"
-  to = "/.netlify/functions/rss"
-  status = 200
-
 [[headers]]
   for = "/*"
   [headers.values]
