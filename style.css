@@ -1241,6 +1241,7 @@ time {
 
 .post-content p {
   margin: 0 0 18px;
+  color: #ffffff;
 }
 
 .admin-shell {
@@ -2012,6 +2013,8 @@ select {
 .post-content,
 .post-content p,
 .post-content li,
+.post-content ul,
+.post-content ol,
 .post-content h2,
 .post-content h3,
 .post-content h4,
@@ -2078,4 +2081,20 @@ select:focus {
 .analytics-stats article,
 .analytics-list-item {
   background: rgba(18, 18, 20, 0.92);
+}
+
+/* Force full post article text to pure white on the black background. */
+article.post-view .post-content,
+article.post-view .post-content :is(p, li, h1, h2, h3, h4, h5, h6, strong, em, blockquote, ul, ol, span, div) {
+  color: #ffffff;
+}
+
+article.post-view .post-content a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+article.post-view .post-content a:hover {
+  color: #e8e8e8;
 }
