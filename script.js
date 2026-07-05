@@ -705,8 +705,9 @@ async function initHome() {
     return;
   }
   try {
-    const posts = await fetchPosts();
-    setupPostFilters(posts);
+    const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
+    const allItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
+    setupPostFilters(allItems);
     trackPageView({ contentType: "home", contentTitle: "Home" });
   } catch (error) {
     console.error(error);
