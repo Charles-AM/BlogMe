@@ -55,11 +55,23 @@
       </main>
 
       <footer class="site-footer">
-        <a href="about.html">About</a>
-        <a href="contact.html">Contact</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html" aria-current="page">Terms</a>
+        <div class="site-footer-links">
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html" aria-current="page">Terms</a>
+          <a href="/feed.xml">RSS</a>
+        </div>
+        <form class="newsletter-form" id="newsletter-form">
+          <label class="newsletter-label">
+            <span>Get new posts by email</span>
+            <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+          </label>
+          <button type="submit" class="primary-button">Subscribe</button>
+        </form>
+        <p class="newsletter-message" id="newsletter-message" role="status" aria-live="polite"></p>
       </footer>
     </div>
+    <script type="module" src="script.js"></script>
   </body>
 </html>

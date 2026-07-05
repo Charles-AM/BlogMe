@@ -368,13 +368,19 @@ h2 {
 }
 
 .site-footer {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+  padding: 28px 0 44px;
+  border-top: 1px solid var(--line);
+  background: var(--soft);
+}
+
+.site-footer-links {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
-  padding: 28px 0 44px;
-  border-top: 1px solid var(--line);
-  background: var(--soft);
 }
 
 .site-footer a {
@@ -1178,8 +1184,9 @@ time {
 }
 
 .post-view {
-  max-width: 860px;
+  max-width: 720px;
   margin: 40px auto 90px;
+  padding-inline: 0;
 }
 
 .post-view img {
@@ -1204,10 +1211,35 @@ time {
   color: var(--muted);
 }
 
+.read-time,
+.share-button {
+  flex: 0 0 auto;
+}
+
+.read-time {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.share-button {
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 0.84rem;
+}
+
 .post-content {
   color: #ffffff;
-  font-size: 1.05rem;
-  line-height: 1.85;
+  font-size: 1.08rem;
+  line-height: 1.9;
+  letter-spacing: 0.01em;
 }
 
 .post-content h2,
@@ -1240,8 +1272,117 @@ time {
 }
 
 .post-content p {
-  margin: 0 0 18px;
+  margin: 0 0 20px;
   color: #ffffff;
+}
+
+.popular-posts-band {
+  padding-top: 0;
+}
+
+.popular-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.popular-post-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(18, 18, 20, 0.92);
+  box-shadow: var(--shadow);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.popular-post-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+}
+
+.popular-post-link {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px;
+  color: inherit;
+}
+
+.popular-rank {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: var(--radius);
+  color: var(--button-text);
+  font-size: 0.9rem;
+  font-weight: 900;
+  background: var(--button);
+}
+
+.popular-post-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.popular-post-copy h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.popular-post-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.popular-post-views {
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.newsletter-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  width: min(100%, 520px);
+}
+
+.newsletter-label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.newsletter-form input {
+  min-height: 44px;
+}
+
+.newsletter-message {
+  min-height: 20px;
+  margin: 0;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.newsletter-message.error {
+  color: var(--danger);
 }
 
 .admin-shell {
@@ -1624,6 +1765,10 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .popular-posts-grid {
+    grid-template-columns: 1fr;
+  }
+
   .ranking-row {
     grid-template-columns: minmax(135px, 170px) minmax(0, 1fr);
   }
@@ -1747,6 +1892,47 @@ select:focus {
 
   .trust-page {
     padding: 20px;
+  }
+
+  .post-view {
+    margin: 24px auto 64px;
+  }
+
+  .post-view h1 {
+    font-size: clamp(1.85rem, 9vw, 2.8rem);
+    line-height: 1.08;
+  }
+
+  .post-content {
+    font-size: 1.12rem;
+    line-height: 1.88;
+  }
+
+  .post-meta {
+    gap: 8px;
+  }
+
+  .read-time,
+  .share-button {
+    min-height: 36px;
+  }
+
+  .newsletter-form {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .newsletter-form .primary-button {
+    width: 100%;
+  }
+
+  .popular-post-link {
+    grid-template-columns: 1fr;
+  }
+
+  .popular-rank {
+    width: fit-content;
+    min-width: 42px;
   }
 
   .blog-grid .post-card,

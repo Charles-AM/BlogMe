@@ -49,6 +49,19 @@ service cloud.firestore {
       allow create: if request.resource.data.type == "page_view";
       allow read, update, delete: if request.auth != null;
     }
+
+    match /postStats/{postId} {
+      allow read: if true;
+      allow create, update: if request.auth == null;
+      allow delete: if request.auth != null;
+    }
+
+    match /newsletterSubscribers/{subscriberId} {
+      allow create: if request.resource.data.keys().hasAll(["email", "createdAtClient"])
+        && request.resource.data.email is string
+        && request.resource.data.email.matches(".*@.*\\..*");
+      allow read, update, delete: if request.auth != null;
+    }
   }
 }
 ```
@@ -93,6 +106,19 @@ service cloud.firestore {
 
     match /analyticsEvents/{eventId} {
       allow create: if request.resource.data.type == "page_view";
+      allow read, update, delete: if isOwner();
+    }
+
+    match /postStats/{postId} {
+      allow read: if true;
+      allow create, update: if request.auth == null;
+      allow delete: if isOwner();
+    }
+
+    match /newsletterSubscribers/{subscriberId} {
+      allow create: if request.resource.data.keys().hasAll(["email", "createdAtClient"])
+        && request.resource.data.email is string
+        && request.resource.data.email.matches(".*@.*\\..*");
       allow read, update, delete: if isOwner();
     }
   }

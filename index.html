@@ -4,6 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Regressed Ranker is a clean anime blog for reviews, essays, and watch notes.">
+    <meta property="og:title" content="Regressed Ranker | Home">
+    <meta property="og:description" content="Regressed Ranker is a clean anime blog for reviews, essays, and watch notes.">
+    <meta property="og:image" content="https://regressedranker.xyz/assets/regressed-ranker-hero.jpg">
+    <meta property="og:url" content="https://regressedranker.xyz/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Regressed Ranker">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="alternate" type="application/rss+xml" title="Regressed Ranker RSS" href="/feed.xml">
     <title>Regressed Ranker | Home</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,6 +48,16 @@
               </div>
             </div>
           </div>
+        </section>
+
+        <section class="content-band popular-posts-band hidden" id="popular-posts-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Trending on Regressed Ranker</p>
+              <h2>Most read this month</h2>
+            </div>
+          </div>
+          <div class="popular-posts-grid" id="popular-posts-grid" aria-live="polite"></div>
         </section>
 
         <section class="content-band">
@@ -89,10 +107,21 @@
         </section>
       </main>
       <footer class="site-footer">
-        <a href="about.html">About</a>
-        <a href="contact.html">Contact</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
+        <div class="site-footer-links">
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+          <a href="/feed.xml">RSS</a>
+        </div>
+        <form class="newsletter-form" id="newsletter-form">
+          <label class="newsletter-label">
+            <span>Get new posts by email</span>
+            <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+          </label>
+          <button type="submit" class="primary-button">Subscribe</button>
+        </form>
+        <p class="newsletter-message" id="newsletter-message" role="status" aria-live="polite"></p>
       </footer>
     </div>
 

@@ -37,14 +37,14 @@
           <p>Here is what can happen when someone visits Regressed Ranker.</p>
 
           <h2>Information</h2>
-          <p>Public readers do not need an account. If you send an email, we receive your email address and whatever you choose to include.</p>
+          <p>Public readers do not need an account. If you send an email or subscribe to new-post updates, we receive your email address and whatever you choose to include.</p>
 
           <h2>Analytics, Cookies, and Ads</h2>
           <p>The site uses simple anonymous analytics to count visits and pages read. It can store basic details like page path, referrer, device type, browser language, and visit time.</p>
           <p>If Google AdSense is added, Google and its partners may use cookies to show ads.</p>
 
           <h2>How It Is Used</h2>
-          <p>We use this to reply to emails, improve the site, see what readers visit, or support ads if ads are added.</p>
+          <p>We use this to reply to emails, send optional new-post updates if you subscribe, improve the site, see what readers visit, or support ads if ads are added.</p>
 
           <h2>Your Choice</h2>
           <p>You can block cookies in your browser settings. You can also choose not to send personal details by email.</p>
@@ -55,11 +55,23 @@
       </main>
 
       <footer class="site-footer">
-        <a href="about.html">About</a>
-        <a href="contact.html">Contact</a>
-        <a href="privacy.html" aria-current="page">Privacy</a>
-        <a href="terms.html">Terms</a>
+        <div class="site-footer-links">
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="privacy.html" aria-current="page">Privacy</a>
+          <a href="terms.html">Terms</a>
+          <a href="/feed.xml">RSS</a>
+        </div>
+        <form class="newsletter-form" id="newsletter-form">
+          <label class="newsletter-label">
+            <span>Get new posts by email</span>
+            <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+          </label>
+          <button type="submit" class="primary-button">Subscribe</button>
+        </form>
+        <p class="newsletter-message" id="newsletter-message" role="status" aria-live="polite"></p>
       </footer>
     </div>
+    <script type="module" src="script.js"></script>
   </body>
 </html>
