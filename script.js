@@ -698,9 +698,11 @@ async function renderPostView(postId) {
       <h1>${escapeHtml(post.title)}</h1>
       <div class="post-meta">
         <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
-        <span class="read-time">${readTime}</span>
         <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
-        <button type="button" class="ghost-button share-button" id="share-post-button">Share</button>
+      </div>
+      <div class="post-actions" aria-label="Post actions">
+        <span class="read-time">${readTime}</span>
+        <button type="button" class="primary-button share-button" id="share-post-button">Share</button>
       </div>
       <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
       <div class="post-content">${parseMarkdown(post.content)}</div>

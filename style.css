@@ -1241,8 +1241,16 @@ time {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
   color: var(--muted);
+}
+
+.post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
 }
 
 .read-time,
@@ -1253,20 +1261,22 @@ time {
 .read-time {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 999px;
   color: #ffffff;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 800;
-  background: rgba(255, 255, 255, 0.06);
+  background: #1a1a1c;
+  box-shadow: var(--shadow);
 }
 
 .share-button {
-  min-height: 34px;
-  padding-inline: 12px;
-  font-size: 0.84rem;
+  min-height: 38px;
+  padding-inline: 16px;
+  font-size: 0.88rem;
+  font-weight: 900;
 }
 
 .post-content {
@@ -1829,6 +1839,11 @@ select:focus {
     gap: 8px;
   }
 
+  .post-actions {
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
   .read-time,
   .share-button {
     min-height: 36px;
@@ -2169,6 +2184,25 @@ select:focus {
 }
 
 /* Force full post article text to pure white on the black background. */
+article.post-view .post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+article.post-view .read-time {
+  color: #ffffff;
+  background: #1a1a1c;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+article.post-view .share-button {
+  color: var(--button-text);
+  background: var(--button);
+}
+
 article.post-view .post-content,
 article.post-view .post-content :is(p, li, h1, h2, h3, h4, h5, h6, strong, em, blockquote, ul, ol, span, div) {
   color: #ffffff;
