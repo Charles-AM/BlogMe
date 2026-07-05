@@ -105,7 +105,19 @@ function excerpt(content = "", max = 150) {
 }
 
 function postShareUrl(post) {
-  return new URL(`index.html?post=${post.id}-${slugify(post.title)}`, location.href).href;
+  return new URL(`index.html?post=${encodeURIComponent(post.id)}`, location.href).href;
+}
+
+function postHref(post) {
+  return `index.html?post=${encodeURIComponent(post.id)}`;
+}
+
+function parsePostIdFromParam(postParam = "") {
+  if (!postParam) return "";
+  const decoded = decodeURIComponent(postParam);
+  // Legacy links used `?post={id}-{slug}`; IDs do not include hyphens.
+  const hyphenIndex = decoded.indexOf("-");
+  return hyphenIndex === -1 ? decoded : decoded.slice(0, hyphenIndex);
 }
 
 function estimateReadTime(content = "", wordsPerMinute = WORDS_PER_MINUTE) {
@@ -500,7 +512,7 @@ function renderPostCards(posts, options = {}) {
     if (isExpanded && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
       card.classList.add("featured-post-card");
     }
-    link.href = post.href || `index.html?post=${post.id}-${slugify(post.title)}`;
+    link.href = post.href || postHref(post);
     img.src = post.imageUrl;
     img.alt = post.title;
     clone.querySelector(".category-badge").textContent = post.category || "Anime";
@@ -508,6 +520,13 @@ function renderPostCards(posts, options = {}) {
     clone.querySelector("h3").textContent = post.title;
     clone.querySelector("p").textContent = excerpt(post.content);
     if (action) action.textContent = post.kind === "recommendation" ? "Open list" : "Read";
+    const footer = clone.querySelector(".post-card-footer");
+    if (footer && post.kind !== "recommendation" && post.content) {
+      const readBadge = document.createElement("span");
+      readBadge.className = "read-time-badge";
+      readBadge.textContent = estimateReadTime(post.content);
+      footer.insertBefore(readBadge, action);
+    }
     normalizeTags(post.tags).slice(0, 3).forEach((tag) => {
       const item = document.createElement("span");
       item.textContent = tag;
@@ -695,14 +714,14 @@ async function renderPostView(postId) {
   main.innerHTML = `
     <article class="post-view">
       <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
+      <div class="post-toolbar" role="toolbar" aria-label="Post tools">
+        <span class="read-time">${readTime}</span>
+        <button type="button" class="primary-button share-button" id="share-post-button">Share post</button>
+      </div>
       <h1>${escapeHtml(post.title)}</h1>
       <div class="post-meta">
         <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
         <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
-      </div>
-      <div class="post-actions" aria-label="Post actions">
-        <span class="read-time">${readTime}</span>
-        <button type="button" class="primary-button share-button" id="share-post-button">Share</button>
       </div>
       <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
       <div class="post-content">${parseMarkdown(post.content)}</div>
@@ -737,7 +756,8 @@ async function initHome() {
   const params = new URLSearchParams(location.search);
   const postParam = params.get("post");
   if (postParam) {
-    await renderPostView(postParam.split("-")[0]);
+    $("main").innerHTML = '<section class="empty-state post-loading"><p>Loading post...</p></section>';
+    await renderPostView(parsePostIdFromParam(postParam));
     return;
   }
   try {
@@ -780,7 +800,7 @@ async function initArchive() {
     monthPosts.forEach((post) => {
       const li = document.createElement("li");
       li.innerHTML = `
-        <a href="${escapeHtml(post.href || `index.html?post=${post.id}-${slugify(post.title)}`)}">
+        <a href="${escapeHtml(post.href || postHref(post))}">
           <strong>${escapeHtml(post.title)}</strong>
         </a>
       `;
