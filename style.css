@@ -1236,6 +1236,71 @@ time {
   font-size: clamp(2.2rem, 8vw, 4.4rem);
 }
 
+.post-view-simple-list .post-meta {
+  margin-bottom: 28px;
+}
+
+.simple-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.simple-list-item {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #121214;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.simple-list-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  object-fit: cover;
+}
+
+.simple-list-copy h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.simple-list-anime {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.simple-list-post-card .read-chip {
+  color: #ffffff;
+}
+
+.simple-list-editor {
+  display: grid;
+  gap: 14px;
+}
+
+.simple-list-editor-item {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.simple-list-editor-item legend {
+  padding: 0 6px;
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
 .post-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1794,6 +1859,11 @@ select:focus {
   .post-view h1 {
     font-size: clamp(1.85rem, 9vw, 2.8rem);
     line-height: 1.08;
+  }
+
+  .simple-list-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .post-content {

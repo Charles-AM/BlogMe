@@ -98,6 +98,13 @@
               <form id="post-form" class="stacked-form">
                 <input id="post-id" type="hidden">
                 <label>
+                  Post type
+                  <select id="post-type">
+                    <option value="article">Article</option>
+                    <option value="simple-list">Simple list (image + character + anime)</option>
+                  </select>
+                </label>
+                <label>
                   Title
                   <input id="post-title" required maxlength="140">
                 </label>
@@ -112,17 +119,29 @@
                   </label>
                   <label>
                     Category
-                    <input id="post-category" placeholder="Review" required>
+                    <input id="post-category" list="post-category-options" placeholder="Review or Character List" required>
                   </label>
                 </div>
+                <datalist id="post-category-options">
+                  <option value="Review"></option>
+                  <option value="Essay"></option>
+                  <option value="Character List"></option>
+                  <option value="List"></option>
+                </datalist>
                 <label>
                   Tags
-                  <input id="post-tags" placeholder="frieren, fantasy, review">
+                  <input id="post-tags" placeholder="lightning, nen, shonen">
                 </label>
-                <label>
-                  Content
-                  <textarea id="post-content" rows="12" required placeholder="Write the post here"></textarea>
-                </label>
+                <div id="post-article-fields">
+                  <label>
+                    Content
+                    <textarea id="post-content" rows="12" required placeholder="Write the post here"></textarea>
+                  </label>
+                </div>
+                <div id="post-list-fields" class="hidden">
+                  <p class="helper-text">Add up to 5 characters. Only image, character name, and anime are shown on the site.</p>
+                  <div id="post-list-items" class="simple-list-editor"></div>
+                </div>
                 <button class="primary-button" id="save-post-button" type="submit">Publish post</button>
               </form>
               <p class="form-message" id="post-message" role="status"></p>

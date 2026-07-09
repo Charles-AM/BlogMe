@@ -35,6 +35,7 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const page = document.body.dataset.page;
 const RECENT_POSTS_COLLAPSED_COUNT = 3;
+const SIMPLE_LIST_MAX_ITEMS = 5;
 const ANALYTICS_COLLECTION = "analyticsEvents";
 const ANALYTICS_RECENT_LIMIT = 500;
 const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
@@ -112,6 +113,44 @@ function parsePostIdFromParam(postParam = "") {
   // Legacy links used `?post={id}-{slug}`; IDs do not include hyphens.
   const hyphenIndex = decoded.indexOf("-");
   return hyphenIndex === -1 ? decoded : decoded.slice(0, hyphenIndex);
+}
+
+function isSimpleListPost(post = {}) {
+  return post.postType === "simple-list";
+}
+
+function normalizeListItems(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .slice(0, SIMPLE_LIST_MAX_ITEMS)
+    .map((item) => ({
+      imageUrl: String(item?.imageUrl || "").trim(),
+      characterName: String(item?.characterName || item?.name || "").trim(),
+      animeName: String(item?.animeName || item?.anime || "").trim()
+    }))
+    .filter((item) => item.imageUrl || item.characterName || item.animeName);
+}
+
+function simpleListPreview(post = {}) {
+  const names = normalizeListItems(post.listItems).map((item) => item.characterName).filter(Boolean);
+  return names.length ? names.join(", ") : "Character list";
+}
+
+function simpleListSearchText(post = {}) {
+  return normalizeListItems(post.listItems)
+    .map((item) => [item.characterName, item.animeName].join(" "))
+    .join(" ");
+}
+
+function renderSimpleListItemsHtml(items = []) {
+  return normalizeListItems(items).map((item) => `
+    <article class="simple-list-item">
+      <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.characterName || "Character")}">
+      <div class="simple-list-copy">
+        <h2>${escapeHtml(item.characterName)}</h2>
+        <p class="simple-list-anime">${escapeHtml(item.animeName)}</p>
+      </div>
+    </article>
+  `).join("");
 }
 
 function normalizeTags(tags) {
@@ -467,6 +506,7 @@ function renderPostCards(posts, options = {}) {
     const tags = clone.querySelector(".tag-row");
     const action = clone.querySelector(".read-chip");
     if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
+    if (isSimpleListPost(post)) card.classList.add("simple-list-post-card");
     if (isExpanded && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
       card.classList.add("featured-post-card");
     }
@@ -476,8 +516,16 @@ function renderPostCards(posts, options = {}) {
     clone.querySelector(".category-badge").textContent = post.category || "Anime";
     clone.querySelector("time").textContent = formatDate(post.date);
     clone.querySelector("h3").textContent = post.title;
-    clone.querySelector("p").textContent = excerpt(post.content);
-    if (action) action.textContent = post.kind === "recommendation" ? "Open list" : "Read";
+    clone.querySelector("p").textContent = isSimpleListPost(post)
+      ? simpleListPreview(post)
+      : excerpt(post.content);
+    if (action) {
+      action.textContent = post.kind === "recommendation"
+        ? "Open list"
+        : isSimpleListPost(post)
+          ? "View list"
+          : "Read";
+    }
     normalizeTags(post.tags).slice(0, 3).forEach((tag) => {
       const item = document.createElement("span");
       item.textContent = tag;
@@ -526,7 +574,7 @@ function applyPostFilters() {
     const searchable = [
       post.title,
       post.category,
-      post.content,
+      isSimpleListPost(post) ? simpleListSearchText(post) : post.content,
       normalizeTags(post.tags).join(" ")
     ].join(" ").toLowerCase();
     const matchesSearch = !search || searchable.includes(search);
@@ -660,18 +708,36 @@ async function renderPostView(postId) {
     return;
   }
   const post = { id: snap.id, ...snap.data() };
-  main.innerHTML = `
-    <article class="post-view">
-      <a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>
-      <h1>${escapeHtml(post.title)}</h1>
-      <div class="post-meta">
-        <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
-        <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
-      </div>
-      <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
-      <div class="post-content">${parseMarkdown(post.content)}</div>
-    </article>
+  const backLink = '<a class="ghost-button" data-back-link href="index.html#posts-grid">Back to reads</a>';
+  const meta = `
+    <div class="post-meta">
+      <time datetime="${escapeHtml(post.date || "")}">${formatDate(post.date)}</time>
+      <span class="genre-chip">${escapeHtml(post.category || "Anime")}</span>
+    </div>
   `;
+
+  if (isSimpleListPost(post)) {
+    main.innerHTML = `
+      <article class="post-view post-view-simple-list">
+        ${backLink}
+        <h1>${escapeHtml(post.title)}</h1>
+        ${meta}
+        <div class="simple-list-grid" aria-label="Character list">
+          ${renderSimpleListItemsHtml(post.listItems)}
+        </div>
+      </article>
+    `;
+  } else {
+    main.innerHTML = `
+      <article class="post-view">
+        ${backLink}
+        <h1>${escapeHtml(post.title)}</h1>
+        ${meta}
+        <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
+        <div class="post-content">${parseMarkdown(post.content)}</div>
+      </article>
+    `;
+  }
   main.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
     try {
       const referrer = document.referrer ? new URL(document.referrer) : null;
@@ -953,7 +1019,64 @@ function resetPostForm() {
   $("#post-form").reset();
   $("#post-id").value = "";
   $("#post-date").valueAsDate = new Date();
+  $("#post-type").value = "article";
   $("#save-post-button").textContent = "Publish post";
+  syncPostFormType();
+  renderPostListFields([]);
+}
+
+function syncPostFormType() {
+  const isList = $("#post-type")?.value === "simple-list";
+  $("#post-article-fields")?.classList.toggle("hidden", isList);
+  $("#post-list-fields")?.classList.toggle("hidden", !isList);
+  const content = $("#post-content");
+  if (content) content.required = !isList;
+}
+
+function renderPostListFields(items = []) {
+  const container = $("#post-list-items");
+  if (!container) return;
+  const rows = normalizeListItems(items);
+  while (rows.length < SIMPLE_LIST_MAX_ITEMS) {
+    rows.push({ imageUrl: "", characterName: "", animeName: "" });
+  }
+  container.innerHTML = rows.slice(0, SIMPLE_LIST_MAX_ITEMS).map((item, index) => `
+    <fieldset class="simple-list-editor-item">
+      <legend>Character ${index + 1}</legend>
+      <label>
+        Image
+        <input class="post-list-image" data-list-index="${index}" value="${escapeHtml(item.imageUrl)}" placeholder="Paste image, local file, or image URL">
+      </label>
+      <div class="form-row">
+        <label>
+          Character
+          <input class="post-list-character" data-list-index="${index}" value="${escapeHtml(item.characterName)}" placeholder="Killua">
+        </label>
+        <label>
+          Anime
+          <input class="post-list-anime" data-list-index="${index}" value="${escapeHtml(item.animeName)}" placeholder="Hunter x Hunter">
+        </label>
+      </div>
+    </fieldset>
+  `).join("");
+  container.querySelectorAll(".post-list-image").forEach((input) => {
+    setupImagePaste(input, "posts", $("#post-message"));
+  });
+}
+
+function readPostListItemsFromForm() {
+  const container = $("#post-list-items");
+  if (!container) return [];
+  const items = [];
+  for (let index = 0; index < SIMPLE_LIST_MAX_ITEMS; index += 1) {
+    const imageUrl = container.querySelector(`.post-list-image[data-list-index="${index}"]`)?.value.trim() || "";
+    const characterName = container.querySelector(`.post-list-character[data-list-index="${index}"]`)?.value.trim() || "";
+    const animeName = container.querySelector(`.post-list-anime[data-list-index="${index}"]`)?.value.trim() || "";
+    if (imageUrl || characterName || animeName) {
+      items.push({ imageUrl, characterName, animeName });
+    }
+  }
+  return items.slice(0, SIMPLE_LIST_MAX_ITEMS);
 }
 
 function resetRankingForm(options = {}) {
@@ -972,14 +1095,31 @@ function resetRankingForm(options = {}) {
 }
 
 function getPostFormData() {
-  return {
+  const postType = $("#post-type")?.value === "simple-list" ? "simple-list" : "article";
+  const base = {
     title: $("#post-title").value.trim(),
     imageUrl: $("#post-image").value.trim(),
-    content: $("#post-content").value.trim(),
     date: $("#post-date").value,
     category: $("#post-category").value.trim(),
     tags: normalizeTags($("#post-tags").value),
+    postType,
     updatedAt: serverTimestamp()
+  };
+
+  if (postType === "simple-list") {
+    const listItems = readPostListItemsFromForm();
+    return {
+      ...base,
+      listItems,
+      content: simpleListPreview({ listItems })
+    };
+  }
+
+  return {
+    ...base,
+    postType: "article",
+    content: $("#post-content").value.trim(),
+    listItems: []
   };
 }
 
@@ -1004,7 +1144,10 @@ function fillPostForm(post) {
   $("#post-date").value = post.date || new Date().toISOString().slice(0, 10);
   $("#post-category").value = post.category || "";
   $("#post-tags").value = normalizeTags(post.tags).join(", ");
+  $("#post-type").value = isSimpleListPost(post) ? "simple-list" : "article";
   $("#save-post-button").textContent = "Update post";
+  syncPostFormType();
+  renderPostListFields(post.listItems || []);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1030,7 +1173,7 @@ function renderAdminPosts(posts) {
     item.innerHTML = `
       <div>
         <h4>${escapeHtml(post.title)}</h4>
-        <p>${formatDate(post.date)} // ${escapeHtml(post.category || "Anime")}</p>
+        <p>${formatDate(post.date)} // ${escapeHtml(post.category || "Anime")}${isSimpleListPost(post) ? " // Simple list" : ""}</p>
       </div>
       <div class="item-actions">
         <button class="ghost-button edit" type="button">Edit</button>
@@ -1210,6 +1353,7 @@ async function loadAdminAnalytics() {
 function wireAdminData() {
   resetPostForm();
   $("#reset-post-form").onclick = resetPostForm;
+  $("#post-type")?.addEventListener("change", syncPostFormType);
   if ($("#reset-ranking-form")) $("#reset-ranking-form").onclick = resetRankingForm;
   if ($("#refresh-analytics")) $("#refresh-analytics").onclick = loadAdminAnalytics;
   loadAdminAnalytics();
@@ -1224,6 +1368,20 @@ function wireAdminData() {
     try {
       const id = $("#post-id").value;
       const data = getPostFormData();
+      if (data.postType === "simple-list") {
+        const completeItems = normalizeListItems(data.listItems).filter(
+          (item) => item.imageUrl && item.characterName && item.animeName
+        );
+        if (!completeItems.length) {
+          showMessage($("#post-message"), "Add at least one character with image, name, and anime.", true);
+          return;
+        }
+        data.listItems = completeItems;
+        data.content = simpleListPreview({ listItems: completeItems });
+      } else if (!data.content) {
+        showMessage($("#post-message"), "Add post content before publishing.", true);
+        return;
+      }
       if (id) await setDoc(doc(db, "posts", id), data, { merge: true });
       else await addDoc(collection(db, "posts"), { ...data, createdAt: serverTimestamp() });
       showMessage($("#post-message"), "Post saved.");
