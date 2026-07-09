@@ -143,8 +143,10 @@ function simpleListSearchText(post = {}) {
 
 function renderSimpleListItemsHtml(items = []) {
   return normalizeListItems(items).map((item) => `
-    <article class="simple-list-item">
-      <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.characterName || "Character")}">
+    <article class="simple-list-entry">
+      <figure class="simple-list-media">
+        <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.characterName || "Character")}">
+      </figure>
       <div class="simple-list-copy">
         <h2>${escapeHtml(item.characterName)}</h2>
         <p class="simple-list-anime">${escapeHtml(item.animeName)}</p>
@@ -722,7 +724,8 @@ async function renderPostView(postId) {
         ${backLink}
         <h1>${escapeHtml(post.title)}</h1>
         ${meta}
-        <div class="simple-list-grid" aria-label="Character list">
+        <img class="simple-list-hero" src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
+        <div class="simple-list-stack" aria-label="Character list">
           ${renderSimpleListItemsHtml(post.listItems)}
         </div>
       </article>

@@ -1237,44 +1237,63 @@ time {
 }
 
 .post-view-simple-list .post-meta {
-  margin-bottom: 28px;
+  margin-bottom: 22px;
 }
 
-.simple-list-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-.simple-list-item {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #121214;
-  box-shadow: var(--shadow);
-  text-align: center;
-}
-
-.simple-list-item img {
+.post-view-simple-list .simple-list-hero {
   width: 100%;
-  aspect-ratio: 1;
+  max-height: 520px;
+  margin-bottom: 40px;
   border-radius: var(--radius);
   object-fit: cover;
+  box-shadow: var(--shadow);
+}
+
+.simple-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 52px;
+}
+
+.simple-list-entry {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 52px;
+  border-bottom: 1px solid var(--line);
+}
+
+.simple-list-entry:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.simple-list-media {
+  margin: 0;
+}
+
+.simple-list-media img {
+  display: block;
+  width: 100%;
+  max-height: 460px;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius);
+  object-fit: cover;
+  box-shadow: var(--shadow);
 }
 
 .simple-list-copy h2 {
   margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.2;
+  font-family: Poppins, Inter, sans-serif;
+  font-size: clamp(1.6rem, 4.5vw, 2.35rem);
+  line-height: 1.15;
 }
 
 .simple-list-anime {
-  margin: 6px 0 0;
+  margin: 10px 0 0;
   color: var(--muted);
-  font-size: 0.84rem;
+  font-size: 1.02rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .simple-list-post-card .read-chip {
@@ -1861,9 +1880,21 @@ select:focus {
     line-height: 1.08;
   }
 
-  .simple-list-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+  .simple-list-stack {
+    gap: 40px;
+  }
+
+  .simple-list-entry {
+    gap: 14px;
+    padding-bottom: 40px;
+  }
+
+  .simple-list-media img {
+    max-height: 320px;
+  }
+
+  .simple-list-copy h2 {
+    font-size: clamp(1.45rem, 7vw, 1.9rem);
   }
 
   .post-content {
@@ -2210,6 +2241,14 @@ select:focus {
 }
 
 /* Force full post article text to pure white on the black background. */
+article.post-view .simple-list-copy h2 {
+  color: #ffffff;
+}
+
+article.post-view .simple-list-anime {
+  color: var(--muted);
+}
+
 article.post-view .post-content,
 article.post-view .post-content :is(p, li, h1, h2, h3, h4, h5, h6, strong, em, blockquote, ul, ol, span, div) {
   color: #ffffff;
