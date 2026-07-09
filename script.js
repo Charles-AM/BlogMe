@@ -516,6 +516,7 @@ function renderPostCards(posts, options = {}) {
     const tags = clone.querySelector(".tag-row");
     const action = clone.querySelector(".read-chip");
     if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
+    if (isSimpleListPost(post)) card.classList.add("simple-list-post-card");
     const listBadge = clone.querySelector(".list-only-badge");
     if (listBadge) listBadge.classList.toggle("hidden", !isSimpleListPost(post));
     if (isExpanded && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
@@ -528,13 +529,13 @@ function renderPostCards(posts, options = {}) {
     clone.querySelector("time").textContent = formatDate(post.date);
     clone.querySelector("h3").textContent = post.title;
     clone.querySelector("p").textContent = isSimpleListPost(post)
-      ? simpleListPreview(post)
+      ? simpleListLede(post.listItems)
       : excerpt(post.content);
     if (action) {
       action.textContent = post.kind === "recommendation"
         ? "Open list"
         : isSimpleListPost(post)
-          ? "View list"
+          ? "List only"
           : "Read";
     }
     normalizeTags(post.tags).slice(0, 3).forEach((tag) => {
@@ -730,10 +731,14 @@ async function renderPostView(postId) {
   if (isSimpleListPost(post)) {
     main.innerHTML = `
       <article class="post-view post-view-simple-list">
-        ${backLink}
+        <div class="post-view-nav">
+          <a class="post-back-link" data-back-link href="index.html#posts-grid">← Back to reads</a>
+        </div>
         <header class="simple-list-header">
+          <p class="simple-list-eyebrow">List only</p>
           <h1>${escapeHtml(post.title)}</h1>
           ${meta}
+          <p class="simple-list-lede">${escapeHtml(simpleListLede(post.listItems))}</p>
         </header>
         <div class="simple-list-stack" aria-label="Character list">
           ${renderSimpleListItemsHtml(post.listItems)}
