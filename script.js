@@ -141,9 +141,17 @@ function simpleListSearchText(post = {}) {
     .join(" ");
 }
 
+function simpleListLede(items = []) {
+  const count = normalizeListItems(items).length;
+  return `${count} character${count === 1 ? "" : "s"} · image and name only`;
+}
+
 function renderSimpleListItemsHtml(items = []) {
-  return normalizeListItems(items).map((item) => `
+  return normalizeListItems(items).map((item, index) => `
     <article class="simple-list-entry">
+      <div class="simple-list-entry-head">
+        <span class="simple-list-rank">${String(index + 1).padStart(2, "0")}</span>
+      </div>
       <figure class="simple-list-media">
         <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.characterName || "Character")}">
       </figure>
@@ -508,7 +516,8 @@ function renderPostCards(posts, options = {}) {
     const tags = clone.querySelector(".tag-row");
     const action = clone.querySelector(".read-chip");
     if (post.kind === "recommendation") card.classList.add("recommendation-post-card");
-    if (isSimpleListPost(post)) card.classList.add("simple-list-post-card");
+    const listBadge = clone.querySelector(".list-only-badge");
+    if (listBadge) listBadge.classList.toggle("hidden", !isSimpleListPost(post));
     if (isExpanded && index === 0 && posts.length > 1 && post.kind !== "recommendation") {
       card.classList.add("featured-post-card");
     }
