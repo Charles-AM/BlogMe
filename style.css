@@ -1236,35 +1236,45 @@ time {
   font-size: clamp(2.2rem, 8vw, 4.4rem);
 }
 
-.post-view-simple-list .post-meta {
-  margin-bottom: 22px;
+.post-view-simple-list {
+  margin-top: 28px;
 }
 
-.post-view-simple-list .simple-list-hero {
-  width: 100%;
-  max-height: 520px;
-  margin-bottom: 40px;
-  border-radius: var(--radius);
-  object-fit: cover;
-  box-shadow: var(--shadow);
+.post-view-simple-list h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.45rem, 4.5vw, 1.85rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.simple-list-header {
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.simple-list-header .post-meta {
+  margin-bottom: 0;
 }
 
 .simple-list-stack {
   display: flex;
   flex-direction: column;
-  gap: 52px;
+  gap: 0;
 }
 
 .simple-list-entry {
   display: grid;
-  gap: 18px;
-  padding-bottom: 52px;
-  border-bottom: 1px solid var(--line);
+  gap: 14px;
+  padding: 28px 0;
 }
 
-.simple-list-entry:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
+.simple-list-entry:first-child {
+  padding-top: 0;
+}
+
+.simple-list-entry + .simple-list-entry {
+  border-top: 1px solid var(--line);
 }
 
 .simple-list-media {
@@ -1274,26 +1284,25 @@ time {
 .simple-list-media img {
   display: block;
   width: 100%;
-  max-height: 460px;
-  aspect-ratio: 16 / 10;
+  max-height: 380px;
+  aspect-ratio: 16 / 9;
   border-radius: var(--radius);
   object-fit: cover;
-  box-shadow: var(--shadow);
 }
 
 .simple-list-copy h2 {
   margin: 0;
   font-family: Poppins, Inter, sans-serif;
-  font-size: clamp(1.6rem, 4.5vw, 2.35rem);
-  line-height: 1.15;
+  font-size: clamp(1.2rem, 3.5vw, 1.5rem);
+  line-height: 1.25;
+  font-weight: 700;
 }
 
 .simple-list-anime {
-  margin: 10px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 1.02rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .simple-list-post-card .read-chip {
@@ -1880,21 +1889,21 @@ select:focus {
     line-height: 1.08;
   }
 
-  .simple-list-stack {
-    gap: 40px;
+  .post-view-simple-list h1 {
+    font-size: clamp(1.3rem, 6vw, 1.65rem);
+  }
+
+  .simple-list-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
   }
 
   .simple-list-entry {
-    gap: 14px;
-    padding-bottom: 40px;
+    padding: 22px 0;
   }
 
   .simple-list-media img {
-    max-height: 320px;
-  }
-
-  .simple-list-copy h2 {
-    font-size: clamp(1.45rem, 7vw, 1.9rem);
+    max-height: 260px;
   }
 
   .post-content {

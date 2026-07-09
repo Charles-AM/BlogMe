@@ -722,9 +722,10 @@ async function renderPostView(postId) {
     main.innerHTML = `
       <article class="post-view post-view-simple-list">
         ${backLink}
-        <h1>${escapeHtml(post.title)}</h1>
-        ${meta}
-        <img class="simple-list-hero" src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
+        <header class="simple-list-header">
+          <h1>${escapeHtml(post.title)}</h1>
+          ${meta}
+        </header>
         <div class="simple-list-stack" aria-label="Character list">
           ${renderSimpleListItemsHtml(post.listItems)}
         </div>
