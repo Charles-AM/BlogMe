@@ -130,11 +130,41 @@ function normalizeListItems(items = []) {
     .filter((item) => item.imageUrl || item.characterName || item.animeName);
 }
 
-function simpleListPreview(post = {}, limit = 2) {
-  const names = normalizeListItems(post.listItems).map((item) => item.characterName).filter(Boolean);
-  if (!names.length) return "Character list";
+function previewItemList(items = [], limit = 2, fallback = "") {
+  const names = items.filter(Boolean);
+  if (!names.length) return fallback;
   const preview = names.slice(0, limit).join(", ");
   return names.length > limit ? `${preview}, ...` : preview;
+}
+
+function simpleListPreview(post = {}, limit = 2) {
+  return previewItemList(
+    normalizeListItems(post.listItems).map((item) => item.characterName),
+    limit,
+    "Character list"
+  );
+}
+
+function postCardPreview(post = {}, limit = 2) {
+  if (isSimpleListPost(post)) {
+    return simpleListPreview(post, limit);
+  }
+  if (post.kind === "recommendation") {
+    const titles = (post.items || []).map((item) => item.title).filter(Boolean);
+    if (titles.length) {
+      return previewItemList(titles, limit, "Recommendation list");
+    }
+    return previewItemList(
+      String(post.content || "").split(",").map((part) => part.trim()).filter(Boolean),
+      limit,
+      "Recommendation list"
+    );
+  }
+  const tags = normalizeTags(post.tags);
+  if (tags.length) {
+    return previewItemList(tags, limit, excerpt(post.content, 80));
+  }
+  return excerpt(post.content, 80);
 }
 
 function simpleListSearchText(post = {}) {
@@ -528,9 +558,7 @@ function renderPostCards(posts, options = {}) {
     clone.querySelector(".category-badge").textContent = post.category || "Anime";
     clone.querySelector("time").textContent = formatDate(post.date);
     clone.querySelector("h3").textContent = post.title;
-    clone.querySelector("p").textContent = isSimpleListPost(post)
-      ? simpleListPreview(post)
-      : excerpt(post.content);
+    clone.querySelector("p").textContent = postCardPreview(post);
     if (action) {
       action.textContent = post.kind === "recommendation"
         ? "Open list"
