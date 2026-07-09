@@ -1237,6 +1237,7 @@ time {
 }
 
 .post-view-simple-list {
+  max-width: 920px;
   margin-top: 20px;
 }
 
@@ -1299,6 +1300,7 @@ time {
   display: grid;
   gap: 12px;
   padding: 24px 0;
+  grid-template-columns: 1fr;
 }
 
 .simple-list-entry:first-child {
@@ -1309,15 +1311,9 @@ time {
   border-top: 1px solid var(--line);
 }
 
-.simple-list-entry-head {
-  display: flex;
-  align-items: center;
-}
-
 .simple-list-rank {
   display: inline-flex;
   align-items: center;
-  min-width: 2.2rem;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
@@ -1337,6 +1333,10 @@ time {
   object-fit: cover;
 }
 
+.simple-list-copy {
+  text-align: left;
+}
+
 .simple-list-copy h2 {
   margin: 0;
   font-family: Poppins, Inter, sans-serif;
@@ -1350,6 +1350,32 @@ time {
   color: var(--muted);
   font-size: 0.88rem;
   font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .simple-list-entry {
+    grid-template-columns: 2.75rem 220px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 24px;
+    row-gap: 0;
+    padding: 22px 0;
+  }
+
+  .simple-list-rank {
+    align-self: center;
+  }
+
+  .simple-list-media img {
+    width: 220px;
+    max-width: 100%;
+    height: 147px;
+    max-height: none;
+    aspect-ratio: 3 / 2;
+  }
+
+  .simple-list-copy h2 {
+    font-size: 1.28rem;
+  }
 }
 
 .list-only-badge {
@@ -1951,20 +1977,20 @@ select:focus {
   }
 
   .post-view-simple-list h1 {
-    font-size: clamp(1.3rem, 6vw, 1.65rem);
+    font-size: clamp(1.1rem, 5.5vw, 1.35rem);
   }
 
   .simple-list-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
+    margin-bottom: 22px;
+    padding-bottom: 12px;
   }
 
   .simple-list-entry {
-    padding: 22px 0;
+    padding: 20px 0;
   }
 
   .simple-list-media img {
-    max-height: 260px;
+    max-height: 240px;
   }
 
   .post-content {

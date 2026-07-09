@@ -149,9 +149,7 @@ function simpleListLede(items = []) {
 function renderSimpleListItemsHtml(items = []) {
   return normalizeListItems(items).map((item, index) => `
     <article class="simple-list-entry">
-      <div class="simple-list-entry-head">
-        <span class="simple-list-rank">${String(index + 1).padStart(2, "0")}</span>
-      </div>
+      <span class="simple-list-rank">${String(index + 1).padStart(2, "0")}</span>
       <figure class="simple-list-media">
         <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.characterName || "Character")}">
       </figure>
@@ -731,9 +729,6 @@ async function renderPostView(postId) {
   if (isSimpleListPost(post)) {
     main.innerHTML = `
       <article class="post-view post-view-simple-list">
-        <div class="post-view-nav">
-          <a class="post-back-link" data-back-link href="index.html#posts-grid">← Back to reads</a>
-        </div>
         <header class="simple-list-header">
           <p class="simple-list-eyebrow">List only</p>
           <h1>${escapeHtml(post.title)}</h1>
