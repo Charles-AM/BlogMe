@@ -130,9 +130,11 @@ function normalizeListItems(items = []) {
     .filter((item) => item.imageUrl || item.characterName || item.animeName);
 }
 
-function simpleListPreview(post = {}) {
+function simpleListPreview(post = {}, limit = 2) {
   const names = normalizeListItems(post.listItems).map((item) => item.characterName).filter(Boolean);
-  return names.length ? names.join(", ") : "Character list";
+  if (!names.length) return "Character list";
+  const preview = names.slice(0, limit).join(", ");
+  return names.length > limit ? `${preview}, ...` : preview;
 }
 
 function simpleListSearchText(post = {}) {
@@ -527,7 +529,7 @@ function renderPostCards(posts, options = {}) {
     clone.querySelector("time").textContent = formatDate(post.date);
     clone.querySelector("h3").textContent = post.title;
     clone.querySelector("p").textContent = isSimpleListPost(post)
-      ? simpleListLede(post.listItems)
+      ? simpleListPreview(post)
       : excerpt(post.content);
     if (action) {
       action.textContent = post.kind === "recommendation"
