@@ -1824,6 +1824,10 @@ select:focus {
   display: none !important;
 }
 
+.recommendation-group.filter-hidden {
+  display: none !important;
+}
+
 .reveal-card {
   animation: cardIn 380ms var(--ease-soft) both;
 }

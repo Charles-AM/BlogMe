@@ -5,6 +5,7 @@ import { fetchPosts, fetchRankings } from "./lib/firestore.mjs";
 import {
   SITE_URL,
   buildRecommendationLists,
+  getRecommendationTopics,
   postCanonicalPath,
   postDescription,
   postHref,
@@ -13,10 +14,13 @@ import {
   renderMetaTags,
   renderPostBodyHtml,
   renderPostsGridHtml,
+  renderRecommendationsHtml,
   serializeFeedForClient,
+  serializeRankingsForClient,
   slugify,
   sortFeedItems,
-  isoDate
+  isoDate,
+  escapeHtml
 } from "./lib/render.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -147,6 +151,38 @@ function renderPostPageShell(post) {
 `;
 }
 
+function injectRecommendations(rankings) {
+  let html = readFileSync(join(ROOT, "recommendations.html"), "utf8");
+  const recommendationsHtml = renderRecommendationsHtml(rankings);
+  const topics = getRecommendationTopics(rankings);
+  const description = topics.length
+    ? `Anime, manga, and manhua recommendation lists from Regressed Ranker — ${topics.length} curated lists with ranked picks.`
+    : "Anime, manga, and manhua recommendations from Regressed Ranker.";
+  const rankingsJson = JSON.stringify(serializeRankingsForClient(rankings));
+
+  html = html.replace(
+    /<meta name="description" content="[^"]*">/,
+    `<meta name="description" content="${escapeHtml(description)}">`
+  );
+
+  html = replaceBetween(
+    html,
+    '<div class="leaderboard" id="rankings-list" aria-live="polite">',
+    "</div>",
+    recommendationsHtml ? `\n${recommendationsHtml}\n` : "\n"
+  );
+
+  const emptyClass = rankings.length ? "empty-state hidden" : "empty-state";
+  html = html.replace(/class="empty-state hidden" id="rankings-empty"/, `class="${emptyClass}" id="rankings-empty"`);
+
+  html = html.replace(
+    "</body>",
+    `    <script id="rankings-feed-data" type="application/json">${rankingsJson}</script>\n  </body>`
+  );
+
+  writeFileSync(join(DIST, "recommendations.html"), html, "utf8");
+}
+
 function writePostPages(posts) {
   for (const post of posts) {
     if (post.kind === "recommendation") continue;
@@ -156,7 +192,7 @@ function writePostPages(posts) {
   }
 }
 
-function writeSitemap(feedItems, blogPosts) {
+function writeSitemap(feedItems, blogPosts, recommendationTopics) {
   const staticPages = [
     { loc: `${SITE_URL}/`, changefreq: "weekly", priority: "1.0" },
     { loc: `${SITE_URL}/recommendations.html`, changefreq: "weekly", priority: "0.9" },
@@ -175,7 +211,18 @@ function writeSitemap(feedItems, blogPosts) {
     priority: "0.7"
   }));
 
-  const urls = [...staticPages.map((page) => ({ ...page, lastmod: today })), ...postUrls];
+  const recommendationUrls = recommendationTopics.map((topic) => ({
+    loc: topic.sitemapUrl,
+    lastmod: topic.lastmod,
+    changefreq: "monthly",
+    priority: "0.65"
+  }));
+
+  const urls = [
+    ...staticPages.map((page) => ({ ...page, lastmod: today })),
+    ...postUrls,
+    ...recommendationUrls
+  ];
   const body = urls.map((url) => `  <url>
     <loc>${url.loc}</loc>
     <lastmod>${url.lastmod}</lastmod>
@@ -228,18 +275,20 @@ async function main() {
 
   const feedItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
   const blogPosts = posts.filter((post) => post.kind !== "recommendation");
+  const recommendationTopics = getRecommendationTopics(rankings);
 
-  console.log(`Found ${posts.length} posts and ${feedItems.length} homepage/archive items.`);
+  console.log(`Found ${posts.length} posts, ${rankings.length} ranking items, and ${recommendationTopics.length} recommendation lists.`);
 
   copyStaticAssets();
   injectHomepage(feedItems);
   injectArchive(feedItems);
+  injectRecommendations(rankings);
   writePostPages(blogPosts);
-  writeSitemap(feedItems, blogPosts);
+  writeSitemap(feedItems, blogPosts, recommendationTopics);
   writeRobotsTxt();
   writeRedirects(blogPosts);
 
-  console.log(`Built ${blogPosts.length} static post pages into dist/.`);
+  console.log(`Built ${blogPosts.length} static post pages and pre-rendered ${recommendationTopics.length} recommendation lists into dist/.`);
 }
 
 main().catch((error) => {

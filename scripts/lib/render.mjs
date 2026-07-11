@@ -433,3 +433,113 @@ export function serializeFeedForClient(items = []) {
     href: post.href || postHref(post)
   }));
 }
+
+export function parseShortText(content = "") {
+  const escaped = escapeHtml(String(content).trim());
+  if (!escaped) return "";
+  const lines = escaped.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const bulletLines = lines.filter((line) => /^[-*]\s+/.test(line));
+  if (bulletLines.length && bulletLines.length === lines.length) {
+    return `<ul>${bulletLines.map((line) => `<li>${line.replace(/^[-*]\s+/, "")}</li>`).join("")}</ul>`;
+  }
+  return escaped.replaceAll("\n", "<br>");
+}
+
+export function recommendationTopicSitemapUrl(topic = "") {
+  return `${SITE_URL}/recommendations.html?topic=${encodeURIComponent(topic)}`;
+}
+
+export function recommendationListDescription(groupTitle, items = []) {
+  const sorted = sortRecommendations(items);
+  const titles = sorted.slice(0, 4).map((item) => item.title).filter(Boolean);
+  const base = titles.length ? `${groupTitle}: ${titles.join(", ")}` : groupTitle;
+  return excerpt(base, 160);
+}
+
+function renderRankingRowHtml(item, groupTitle) {
+  const rating = getRatingValue(item);
+  const label = getRecommendationLabel(item);
+  const chip = label && label !== groupTitle && label.length < 28
+    ? `<span class="genre-chip">${escapeHtml(label)}</span>`
+    : "";
+
+  return `
+    <article class="ranking-row reveal-card" aria-label="${escapeHtml(item.title || "Untitled")} recommendation">
+      <div class="ranking-media">
+        <img class="ranking-image" alt="${escapeHtml(item.title || "Recommendation artwork")}" src="${escapeHtml(item.imageUrl || "assets/regressed-ranker-hero.jpg")}">
+      </div>
+      <div class="ranking-copy">
+        <div class="ranking-title-line">
+          <h3>${escapeHtml(item.title || "Untitled recommendation")}</h3>
+          ${chip}
+        </div>
+        <div class="recommendation-description">${parseShortText(item.description || "")}</div>
+        <div class="rating-track" aria-label="Rating out of 10">
+          <span style="width: ${rating * 10}%"></span>
+        </div>
+      </div>
+      <div class="ranking-actions">
+        <strong class="rating-value">${rating.toFixed(1)}/10</strong>
+      </div>
+    </article>
+  `.trim();
+}
+
+export function renderRecommendationsHtml(rankings = []) {
+  const groups = groupRankingsByTopic(rankings);
+  if (!rankings.length) return "";
+
+  return sortRecommendationGroupEntries(Object.entries(groups)).map(([groupTitle, items]) => {
+    const sortedItems = sortRecommendations(items);
+    const groupId = getRecommendationGroupId(groupTitle);
+    const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
+    const summaryText = summaryTitles.length
+      ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
+      : "Open the list to view the full recommendations.";
+    const rows = sortedItems.map((item) => renderRankingRowHtml(item, groupTitle)).join("\n");
+
+    return `
+      <section class="recommendation-group reveal-card is-expanded" id="${escapeHtml(groupId)}" tabindex="-1">
+        <header class="recommendation-group-title">
+          <div>
+            <h2>${escapeHtml(groupTitle)}</h2>
+            <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
+          </div>
+          <div class="recommendation-group-meta">
+            <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
+            <button class="recommendation-group-toggle" type="button" aria-expanded="true">Close list</button>
+            <a class="recommendation-back-link" href="/recommendations.html">Back to all lists</a>
+          </div>
+        </header>
+        <div class="recommendation-group-items">
+          ${rows}
+        </div>
+      </section>
+    `.trim();
+  }).join("\n");
+}
+
+export function getRecommendationTopics(rankings = []) {
+  return sortRecommendationGroupEntries(Object.entries(groupRankingsByTopic(rankings))).map(([topic, items]) => ({
+    topic,
+    lastmod: isoDate(getRecommendationDate(items)),
+    description: recommendationListDescription(topic, items),
+    sitemapUrl: recommendationTopicSitemapUrl(topic)
+  }));
+}
+
+export function serializeRankingsForClient(rankings = []) {
+  return rankings.map((item) => ({
+    id: item.id,
+    title: item.title || "",
+    topicTitle: item.topicTitle || "",
+    listTitle: item.listTitle || "",
+    topic: item.topic || "",
+    genre: item.genre || "",
+    type: item.type || "",
+    rank: item.rank,
+    rating: item.rating,
+    imageUrl: item.imageUrl || "",
+    description: item.description || ""
+  }));
+}
