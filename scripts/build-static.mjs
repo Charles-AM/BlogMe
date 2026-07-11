@@ -192,6 +192,13 @@ function writePostPages(posts) {
   }
 }
 
+function escapeSitemapLoc(url = "") {
+  return String(url)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function writeSitemap(feedItems, blogPosts, recommendationTopics) {
   const staticPages = [
     { loc: `${SITE_URL}/`, changefreq: "weekly", priority: "1.0" },
@@ -224,7 +231,7 @@ function writeSitemap(feedItems, blogPosts, recommendationTopics) {
     ...recommendationUrls
   ];
   const body = urls.map((url) => `  <url>
-    <loc>${url.loc}</loc>
+    <loc>${escapeSitemapLoc(url.loc)}</loc>
     <lastmod>${url.lastmod}</lastmod>
     <changefreq>${url.changefreq}</changefreq>
     <priority>${url.priority}</priority>
@@ -237,6 +244,7 @@ ${body}
 `;
 
   writeFileSync(join(DIST, "sitemap.xml"), xml, "utf8");
+  console.log(`Wrote sitemap.xml with ${urls.length} URLs (${postUrls.length} posts, ${recommendationUrls.length} recommendations).`);
 }
 
 function writeRobotsTxt() {

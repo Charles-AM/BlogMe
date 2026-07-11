@@ -229,13 +229,34 @@ Recommended domain style:
 
 ## SEO and search indexing
 
-The site uses a build-time static generation step so crawlers receive real post titles, body text, and meta tags in the initial HTML response.
+The build generates `sitemap.xml` and `robots.txt` in `dist/` on every deploy.
 
-- Post URLs: `https://regressedranker.xyz/posts/{post-id}/`
-- Legacy URLs like `index.html?post={id}` redirect to the new path
-- Each post page includes unique `<title>`, description, Open Graph, and Twitter Card tags
-- `sitemap.xml` lists every public post URL
-- `robots.txt` points search engines to the sitemap
+**Current sitemap includes:**
+- 7 static pages (home, recommendations, archive, about, contact, privacy, terms)
+- every blog post at `/posts/{id}/`
+- every recommendation topic at `recommendations.html?topic=...`
+
+After each build + deploy, trigger your Netlify build hook so the sitemap stays current.
+
+### Submit to Google Search Console
+
+1. Open [Google Search Console](https://search.google.com/search-console).
+2. Select the property **`regressedranker.xyz`** (Domain) or **`https://regressedranker.xyz/`** (URL prefix, non-www).
+3. Do **not** use a `www` or `netlify.app` property — the sitemap lives on `regressedranker.xyz`.
+4. In the left menu, open **Sitemaps**.
+5. Delete any old failed `sitemap.xml` entries.
+6. In **Add a new sitemap**, enter exactly:
+   ```
+   https://regressedranker.xyz/sitemap.xml
+   ```
+   If the field already shows your domain, try only `sitemap.xml` instead.
+7. Click **Submit**. Status should change to **Success** within an hour (39 URLs discovered).
+
+### If submission fails
+
+- **URL inspection:** test `https://regressedranker.xyz/sitemap.xml` → **Test live URL** → must show fetch successful.
+- **Property mismatch:** add a **Domain** property for `regressedranker.xyz` (DNS TXT verification) if you only have `www` or Netlify URL.
+- **No manual submit needed:** `robots.txt` already contains `Sitemap: https://regressedranker.xyz/sitemap.xml` — Google will find it automatically.
 
 ### Verify static HTML
 
