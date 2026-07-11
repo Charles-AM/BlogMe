@@ -160,9 +160,41 @@ http://localhost:8080/rr-vault-9k4m2.html
 4. Choose GitHub.
 5. Select the `BlogMe` repo.
 6. Use these settings:
-   - Build command: leave blank
-   - Publish directory: `.`
+   - Build command: `npm run build`
+   - Publish directory: `dist`
 7. Deploy.
+
+The build step fetches your published Firestore posts and generates static HTML for crawlers and social previews. After you publish or edit a post in the admin page, trigger a new Netlify deploy so the static pages update.
+
+### Rebuild after publishing
+
+Every time you publish, edit, or delete a blog post:
+
+1. Open your site in Netlify.
+2. Go to **Deploys**.
+3. Click **Trigger deploy > Deploy site**.
+
+Optional: create a [Netlify build hook](https://docs.netlify.com/build/configure-builds/build-hooks/) and call that URL from a bookmark or script so redeploying is one click.
+
+### Local build
+
+```bash
+npm install
+npm run build
+```
+
+This writes a `dist/` folder with:
+
+- pre-filled homepage and archive HTML
+- one static page per post at `/posts/{post-id}/`
+- an updated `sitemap.xml` with every post URL
+- `robots.txt` and legacy URL redirects
+
+Preview the built site:
+
+```bash
+npx serve dist
+```
 
 ### Drag-and-Drop Method
 
@@ -187,6 +219,31 @@ Recommended domain style:
 - `regressedranker.com`
 - `regressedranker.net`
 - `regressedranker.blog`
+
+## SEO and search indexing
+
+The site uses a build-time static generation step so crawlers receive real post titles, body text, and meta tags in the initial HTML response.
+
+- Post URLs: `https://regressedranker.xyz/posts/{post-id}/`
+- Legacy URLs like `index.html?post={id}` redirect to the new path
+- Each post page includes unique `<title>`, description, Open Graph, and Twitter Card tags
+- `sitemap.xml` lists every public post URL
+- `robots.txt` points search engines to the sitemap
+
+### Verify static HTML
+
+```bash
+curl -s https://regressedranker.xyz/posts/YOUR_POST_ID/ | grep -E '<title>|<h1>|<p>'
+```
+
+Or use **View Page Source** in your browser. You should see the post title and body text without waiting for JavaScript.
+
+### Request re-indexing in Google Search Console
+
+1. Open [Google Search Console](https://search.google.com/search-console).
+2. Select the `regressedranker.xyz` property.
+3. Submit `https://regressedranker.xyz/sitemap.xml` under **Sitemaps**.
+4. Use **URL inspection** on a post URL and click **Request indexing**.
 
 ## Posting
 

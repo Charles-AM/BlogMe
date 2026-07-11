@@ -1,0 +1,11 @@
+{
+  "name": "regressed-ranker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-static.mjs"
+  },
+  "dependencies": {
+    "firebase": "^10.12.2"
+  }
+}
