@@ -1248,6 +1248,31 @@ time {
   font-size: clamp(2.2rem, 8vw, 4.4rem);
 }
 
+.recommendation-topic-view {
+  max-width: 1020px;
+}
+
+.recommendation-topic-header {
+  margin-bottom: 28px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.recommendation-topic-header .post-back-link {
+  margin-bottom: 14px;
+}
+
+.recommendation-topic-count {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.recommendation-topic-list {
+  margin-top: 8px;
+}
+
 .post-view-simple-list {
   max-width: 1020px;
   margin-top: 20px;
