@@ -104,7 +104,7 @@ function excerpt(content = "", max = 150) {
 }
 
 function postHref(post) {
-  return `index.html?post=${encodeURIComponent(post.id)}`;
+  return `/posts/${encodeURIComponent(post.id)}/`;
 }
 
 function parsePostIdFromParam(postParam = "") {
@@ -800,6 +800,86 @@ async function renderPostView(postId) {
   });
 }
 
+function readPrerenderedFeed() {
+  const node = document.getElementById("posts-feed-data");
+  if (!node?.textContent) return null;
+  try {
+    return JSON.parse(node.textContent);
+  } catch {
+    return null;
+  }
+}
+
+function wirePrerenderedPagination() {
+  const button = $("#pagination")?.querySelector("button");
+  const grid = $("#posts-grid");
+  if (!button || !grid) return;
+
+  button.addEventListener("click", () => {
+    areRecentPostsExpanded = !areRecentPostsExpanded;
+    const cards = [...grid.querySelectorAll(".post-card")];
+    cards.forEach((card, index) => {
+      if (index >= RECENT_POSTS_COLLAPSED_COUNT) {
+        card.classList.toggle("hidden", !areRecentPostsExpanded);
+      }
+    });
+    const hiddenCount = cards.length - RECENT_POSTS_COLLAPSED_COUNT;
+    button.textContent = areRecentPostsExpanded
+      ? "Show fewer posts"
+      : `Show ${hiddenCount} more post${hiddenCount === 1 ? "" : "s"}`;
+    button.setAttribute("aria-expanded", String(areRecentPostsExpanded));
+    if (!areRecentPostsExpanded) {
+      grid.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  });
+}
+
+function filterPrerenderedCards() {
+  const search = ($("#post-search")?.value || "").trim().toLowerCase();
+  const category = $("#post-category-filter")?.value || "all";
+  $("#posts-grid")?.querySelectorAll(".post-card").forEach((card) => {
+    const badge = card.querySelector(".category-badge")?.textContent?.trim() || "";
+    const text = card.textContent?.toLowerCase() || "";
+    const matchesSearch = !search || text.includes(search);
+    const matchesCategory = category === "all" || badge === category;
+    card.classList.toggle("filter-hidden", !(matchesSearch && matchesCategory));
+  });
+}
+
+function initPrerenderedHome(feed) {
+  homePosts = feed;
+  populatePostCategoryFilter(feed);
+  $("#post-search")?.addEventListener("input", filterPrerenderedCards);
+  $("#post-category-filter")?.addEventListener("change", filterPrerenderedCards);
+  wirePrerenderedPagination();
+  trackPageView({ contentType: "home", contentTitle: "Home" });
+}
+
+function initStaticPostPage() {
+  const parts = location.pathname.split("/").filter(Boolean);
+  const postId = parts[0] === "posts" ? parts[1] : "";
+  const title = document.querySelector("main h1")?.textContent || document.title;
+
+  $("main")?.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
+    try {
+      const referrer = document.referrer ? new URL(document.referrer) : null;
+      if (referrer?.origin === location.origin && history.length > 1) {
+        event.preventDefault();
+        history.back();
+      }
+    } catch {
+      // Fall back to the href when the browser does not expose a same-site referrer.
+    }
+  });
+
+  trackPageView({
+    contentType: "post",
+    contentId: postId,
+    contentTitle: title,
+    title: document.title
+  });
+}
+
 async function initHome() {
   initAnimeRadar();
   if (!hasConfiguredFirebase()) {
@@ -813,6 +893,14 @@ async function initHome() {
     await renderPostView(parsePostIdFromParam(postParam));
     return;
   }
+
+  const prerenderedFeed = readPrerenderedFeed();
+  const hasPrerenderedCards = Boolean($("#posts-grid")?.querySelector(".post-card"));
+  if (prerenderedFeed?.length && hasPrerenderedCards) {
+    initPrerenderedHome(prerenderedFeed);
+    return;
+  }
+
   try {
     const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
     const allItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
@@ -826,6 +914,10 @@ async function initHome() {
 async function initArchive() {
   const archive = $("#archive-list");
   const empty = $("#archive-empty");
+  if (archive?.querySelector(".archive-group")) {
+    trackPageView({ contentType: "archive", contentTitle: "Archive" });
+    return;
+  }
   if (!hasConfiguredFirebase()) {
     archive.innerHTML = "";
     empty.classList.remove("hidden");
@@ -1577,6 +1669,7 @@ async function initAdmin() {
 }
 
 if (page === "home") initHome();
+if (page === "post") initStaticPostPage();
 if (page === "rankings") initRankings().catch((error) => console.error(error));
 if (page === "archive") initArchive().catch((error) => console.error(error));
 if (page === "admin") initAdmin();

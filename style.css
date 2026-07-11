@@ -1429,6 +1429,24 @@ time {
     margin-top: 11px;
     font-size: 1.16rem;
   }
+
+  .post-view-simple-list h1 {
+    font-size: 1.92rem;
+  }
+
+  .simple-list-eyebrow {
+    font-size: 0.82rem;
+  }
+
+  .simple-list-lede {
+    margin-top: 14px;
+    font-size: 1.06rem;
+  }
+
+  .simple-list-header {
+    margin-bottom: 36px;
+    padding-bottom: 20px;
+  }
 }
 
 .list-only-badge {
@@ -1799,6 +1817,10 @@ select:focus {
 }
 
 .hidden {
+  display: none !important;
+}
+
+.post-card.filter-hidden {
   display: none !important;
 }
 
