@@ -44,7 +44,7 @@ export function slugify(value = "") {
 }
 
 export function postCanonicalPath(post) {
-  return `/posts/${encodeURIComponent(post.id)}/`;
+  return `/posts/${encodeURIComponent(String(post.id).toLowerCase())}/`;
 }
 
 export function postHref(post) {

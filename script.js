@@ -104,7 +104,7 @@ function excerpt(content = "", max = 150) {
 }
 
 function postHref(post) {
-  return `/posts/${encodeURIComponent(post.id)}/`;
+  return `/posts/${encodeURIComponent(String(post.id).toLowerCase())}/`;
 }
 
 function parsePostIdFromParam(postParam = "") {

@@ -186,7 +186,8 @@ function injectRecommendations(rankings) {
 function writePostPages(posts) {
   for (const post of posts) {
     if (post.kind === "recommendation") continue;
-    const dir = join(DIST, "posts", post.id);
+    const postId = String(post.id).toLowerCase();
+    const dir = join(DIST, "posts", postId);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), renderPostPageShell(post), "utf8");
   }
@@ -264,10 +265,15 @@ function writeRedirects(blogPosts) {
   ];
 
   for (const post of blogPosts) {
+    const lowerId = String(post.id).toLowerCase();
+    if (lowerId !== post.id) {
+      lines.push(`/posts/${post.id}/ /posts/${lowerId}/ 301`);
+      lines.push(`/posts/${post.id} /posts/${lowerId}/ 301`);
+    }
     const slug = slugify(post.title || "");
     if (slug) {
-      lines.push(`/index.html?post=${post.id}-${slug} /posts/${post.id}/ 301`);
-      lines.push(`/?post=${post.id}-${slug} /posts/${post.id}/ 301`);
+      lines.push(`/index.html?post=${post.id}-${slug} /posts/${lowerId}/ 301`);
+      lines.push(`/?post=${post.id}-${slug} /posts/${lowerId}/ 301`);
     }
   }
 
