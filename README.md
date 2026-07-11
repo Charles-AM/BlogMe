@@ -168,13 +168,20 @@ The build step fetches your published Firestore posts and generates static HTML 
 
 ### Rebuild after publishing
 
-Every time you publish, edit, or delete a blog post:
+Every time you publish, edit, or delete a blog post **or save a recommendation**:
 
 1. Open your site in Netlify.
 2. Go to **Deploys**.
 3. Click **Trigger deploy > Deploy site**.
 
-Optional: create a [Netlify build hook](https://docs.netlify.com/build/configure-builds/build-hooks/) and call that URL from a bookmark or script so redeploying is one click.
+Or open your Netlify build hook URL in the browser (one click).
+
+The build pre-renders:
+
+- all blog posts at `/posts/{id}/`
+- all recommendation lists on `recommendations.html` (full ranked content in HTML)
+- the homepage grid and archive
+- `sitemap.xml` with every post and recommendation topic URL
 
 ### Local build
 

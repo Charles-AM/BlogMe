@@ -1077,11 +1077,127 @@ function renderRankings(rankings, openTopic = "", search = "") {
   return targetGroup;
 }
 
+function readPrerenderedRankings() {
+  const node = document.getElementById("rankings-feed-data");
+  if (!node?.textContent) return null;
+  try {
+    return JSON.parse(node.textContent);
+  } catch {
+    return null;
+  }
+}
+
+function wirePrerenderedRecommendationGroups(openTopic = "") {
+  const list = $("#rankings-list");
+  if (!list) return null;
+
+  const groups = [...list.querySelectorAll(".recommendation-group")];
+  let targetGroup = null;
+
+  const collapseOtherGroups = (currentGroup) => {
+    groups.forEach((openGroup) => {
+      if (openGroup === currentGroup) return;
+      openGroup.classList.remove("is-expanded");
+      openGroup.querySelector(".recommendation-group-items")?.classList.add("hidden");
+      const openToggle = openGroup.querySelector(".recommendation-group-toggle");
+      if (openToggle) {
+        openToggle.textContent = "Open list";
+        openToggle.setAttribute("aria-expanded", "false");
+      }
+      openGroup.querySelector(".recommendation-back-link")?.classList.add("hidden");
+    });
+  };
+
+  groups.forEach((group) => {
+    const groupItems = group.querySelector(".recommendation-group-items");
+    const toggle = group.querySelector(".recommendation-group-toggle");
+    const backLink = group.querySelector(".recommendation-back-link");
+    const groupTitle = group.querySelector("h2")?.textContent || "";
+
+    const scrollToGroup = () => {
+      group.scrollIntoView({ block: "start", behavior: "smooth" });
+      group.focus({ preventScroll: true });
+    };
+
+    const setExpanded = (expanded, options = {}) => {
+      if (expanded) collapseOtherGroups(group);
+      group.classList.toggle("is-expanded", expanded);
+      groupItems?.classList.toggle("hidden", !expanded);
+      if (toggle) {
+        toggle.textContent = expanded ? "Close list" : "Open list";
+        toggle.setAttribute("aria-expanded", String(expanded));
+      }
+      backLink?.classList.toggle("hidden", !expanded);
+      if (options.updateUrl) {
+        history.pushState({}, "", expanded ? getRecommendationListHref(groupTitle) : "recommendations.html");
+      }
+      if (options.scroll) scrollToGroup();
+    };
+
+    toggle?.addEventListener("click", () => {
+      setExpanded(groupItems?.classList.contains("hidden"), { scroll: true, updateUrl: true });
+    });
+    backLink?.addEventListener("click", (event) => {
+      event.preventDefault();
+      setExpanded(false, { scroll: true, updateUrl: true });
+    });
+
+    if (openTopic && groupTitle === openTopic) {
+      setExpanded(true);
+      targetGroup = group;
+    }
+  });
+
+  return targetGroup;
+}
+
+function filterPrerenderedRecommendations() {
+  const term = ($("#recommendation-search")?.value || "").trim().toLowerCase();
+  $("#rankings-list")?.querySelectorAll(".recommendation-group").forEach((group) => {
+    const text = group.textContent?.toLowerCase() || "";
+    group.classList.toggle("filter-hidden", Boolean(term) && !text.includes(term));
+  });
+}
+
+function initPrerenderedRecommendations(rankings, openTopic = "") {
+  currentRankings = rankings;
+  const search = $("#recommendation-search");
+  let hasScrolledToRequestedTopic = false;
+  const targetGroup = wirePrerenderedRecommendationGroups(openTopic);
+
+  if (targetGroup && !hasScrolledToRequestedTopic && !(search?.value || "").trim()) {
+    hasScrolledToRequestedTopic = true;
+    requestAnimationFrame(() => {
+      targetGroup.scrollIntoView({ block: "start", behavior: "smooth" });
+      targetGroup.focus({ preventScroll: true });
+    });
+  }
+
+  search?.addEventListener("input", filterPrerenderedRecommendations);
+  trackPageView({
+    contentType: openTopic ? "recommendation_topic" : "recommendations",
+    contentTitle: openTopic || "Recommendations"
+  });
+}
+
 async function initRankings() {
   const search = $("#recommendation-search");
   const params = new URLSearchParams(location.search);
   let requestedTopic = params.get("topic") || "";
   let hasScrolledToRequestedTopic = false;
+
+  const prerenderedRankings = readPrerenderedRankings();
+  const hasPrerenderedGroups = Boolean($("#rankings-list")?.querySelector(".recommendation-group"));
+  if (prerenderedRankings?.length && hasPrerenderedGroups) {
+    initPrerenderedRecommendations(prerenderedRankings, requestedTopic);
+    window.addEventListener("popstate", () => {
+      requestedTopic = new URLSearchParams(location.search).get("topic") || "";
+      wirePrerenderedRecommendationGroups(requestedTopic);
+      filterPrerenderedRecommendations();
+    });
+    return;
+  }
+
   if (!hasConfiguredFirebase()) {
     $("#rankings-empty").classList.remove("hidden");
     $("#rankings-empty p").textContent = "Add your Firebase config and saved rankings will appear here.";
