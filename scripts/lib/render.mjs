@@ -540,8 +540,8 @@ export function renderRecommendationTopicBodyHtml(topic, items = []) {
 
   return `
     <article class="recommendation-topic-view">
-      <a class="ghost-button" href="/recommendations.html">Back to all lists</a>
       <header class="recommendation-topic-header">
+        <a class="post-back-link" href="/recommendations.html">← All lists</a>
         <p class="eyebrow">Recommendations</p>
         <h1>${escapeHtml(topic)}</h1>
         <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
