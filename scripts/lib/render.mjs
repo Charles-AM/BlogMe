@@ -44,7 +44,35 @@ export function slugify(value = "") {
 }
 
 export function postCanonicalPath(post) {
+  if (isSimpleListPost(post)) {
+    return listCanonicalPath(post);
+  }
   return `/posts/${encodeURIComponent(String(post.id).toLowerCase())}/`;
+}
+
+export function listCanonicalPath(post = {}) {
+  return `/lists/${encodeURIComponent(resolvePostSlug(post))}/`;
+}
+
+export function resolvePostSlug(post = {}) {
+  const base = slugify(post.title || post.id || "list");
+  return base || slugify(post.id || "list");
+}
+
+export function recommendationTopicSlug(topic = "") {
+  return slugify(topic) || "list";
+}
+
+export function recommendationTopicCanonicalPath(topic = "") {
+  return `/recommendations/${encodeURIComponent(recommendationTopicSlug(topic))}/`;
+}
+
+export function categorySlug(category = "") {
+  return slugify(category) || "posts";
+}
+
+export function categoryCanonicalPath(category = "") {
+  return `/category/${encodeURIComponent(categorySlug(category))}/`;
 }
 
 export function postHref(post) {
@@ -342,7 +370,7 @@ export function getRecommendationGroupId(topic = "") {
 }
 
 export function getRecommendationListHref(topic = "") {
-  return `/recommendations.html?topic=${encodeURIComponent(topic)}#${getRecommendationGroupId(topic)}`;
+  return recommendationTopicCanonicalPath(topic);
 }
 
 function getRecommendationTopic(item = {}) {
@@ -455,7 +483,15 @@ export function parseShortText(content = "") {
 }
 
 export function recommendationTopicSitemapUrl(topic = "") {
-  return `${SITE_URL}/recommendations.html?topic=${encodeURIComponent(topic)}`;
+  return `${SITE_URL}${recommendationTopicCanonicalPath(topic)}`;
+}
+
+export function listSitemapUrl(post = {}) {
+  return `${SITE_URL}${listCanonicalPath(post)}`;
+}
+
+export function categorySitemapUrl(category = "") {
+  return `${SITE_URL}${categoryCanonicalPath(category)}`;
 }
 
 export function recommendationListDescription(groupTitle, items = []) {
@@ -494,13 +530,38 @@ function renderRankingRowHtml(item, groupTitle) {
   `.trim();
 }
 
-export function renderRecommendationsHtml(rankings = []) {
+export function renderRecommendationTopicBodyHtml(topic, items = []) {
+  const sortedItems = sortRecommendations(items);
+  const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
+  const summaryText = summaryTitles.length
+    ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
+    : "Ranked anime and manga recommendations.";
+  const rows = sortedItems.map((item) => renderRankingRowHtml(item, topic)).join("\n");
+
+  return `
+    <article class="recommendation-topic-view">
+      <a class="ghost-button" href="/recommendations.html">Back to all lists</a>
+      <header class="recommendation-topic-header">
+        <p class="eyebrow">Recommendations</p>
+        <h1>${escapeHtml(topic)}</h1>
+        <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
+        <p class="recommendation-topic-count">${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</p>
+      </header>
+      <div class="leaderboard recommendation-topic-list" aria-label="${escapeHtml(topic)} recommendations">
+        ${rows}
+      </div>
+    </article>
+  `.trim();
+}
+
+export function renderRecommendationsHubHtml(rankings = []) {
   const groups = groupRankingsByTopic(rankings);
   if (!rankings.length) return "";
 
   return sortRecommendationGroupEntries(Object.entries(groups)).map(([groupTitle, items]) => {
     const sortedItems = sortRecommendations(items);
     const groupId = getRecommendationGroupId(groupTitle);
+    const topicHref = getRecommendationListHref(groupTitle);
     const summaryTitles = sortedItems.slice(0, 2).map((item) => item.title).filter(Boolean);
     const summaryText = summaryTitles.length
       ? `Top picks: ${summaryTitles.join(", ")}${sortedItems.length > summaryTitles.length ? ` and ${sortedItems.length - summaryTitles.length} more` : ""}`
@@ -508,19 +569,19 @@ export function renderRecommendationsHtml(rankings = []) {
     const rows = sortedItems.map((item) => renderRankingRowHtml(item, groupTitle)).join("\n");
 
     return `
-      <section class="recommendation-group reveal-card is-expanded" id="${escapeHtml(groupId)}" tabindex="-1">
+      <section class="recommendation-group reveal-card" id="${escapeHtml(groupId)}" tabindex="-1">
         <header class="recommendation-group-title">
           <div>
-            <h2>${escapeHtml(groupTitle)}</h2>
+            <h2><a href="${escapeHtml(topicHref)}">${escapeHtml(groupTitle)}</a></h2>
             <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
           </div>
           <div class="recommendation-group-meta">
             <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
-            <button class="recommendation-group-toggle" type="button" aria-expanded="true">Close list</button>
-            <a class="recommendation-back-link" href="/recommendations.html">Back to all lists</a>
+            <a class="recommendation-open-link" href="${escapeHtml(topicHref)}">View list</a>
+            <button class="recommendation-group-toggle" type="button" aria-expanded="false">Quick preview</button>
           </div>
         </header>
-        <div class="recommendation-group-items">
+        <div class="recommendation-group-items hidden">
           ${rows}
         </div>
       </section>
@@ -528,13 +589,68 @@ export function renderRecommendationsHtml(rankings = []) {
   }).join("\n");
 }
 
+export function renderCategoryHubHtml(category, posts = []) {
+  const cards = posts.map((post, index) => renderPostCardHtml(post, index, {
+    expanded: true,
+    total: posts.length,
+    hidden: false
+  })).join("\n");
+
+  return `
+    <section class="category-hub">
+      <header class="page-hero simple-page-heading">
+        <p class="eyebrow">Regressed Ranker</p>
+        <h1>${escapeHtml(category)}</h1>
+        <p>${posts.length} post${posts.length === 1 ? "" : "s"} in this section.</p>
+      </header>
+      <div class="blog-grid category-hub-grid" aria-label="${escapeHtml(category)} posts">
+        ${cards}
+      </div>
+    </section>
+  `.trim();
+}
+
+export function renderRecommendationsHtml(rankings = []) {
+  return renderRecommendationsHubHtml(rankings);
+}
+
 export function getRecommendationTopics(rankings = []) {
   return sortRecommendationGroupEntries(Object.entries(groupRankingsByTopic(rankings))).map(([topic, items]) => ({
     topic,
+    slug: recommendationTopicSlug(topic),
+    items,
     lastmod: isoDate(getRecommendationDate(items)),
     description: recommendationListDescription(topic, items),
-    sitemapUrl: recommendationTopicSitemapUrl(topic)
+    canonicalPath: recommendationTopicCanonicalPath(topic),
+    sitemapUrl: recommendationTopicSitemapUrl(topic),
+    image: postOgImage({ imageUrl: sortRecommendations(items)[0]?.imageUrl })
   }));
+}
+
+export function getCategoryTopics(posts = []) {
+  const groups = posts.reduce((result, post) => {
+    const category = post.category || "Blog";
+    result[category] = result[category] || [];
+    result[category].push(post);
+    return result;
+  }, {});
+
+  return Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, categoryPosts]) => ({
+      category,
+      slug: categorySlug(category),
+      posts: sortFeedItems(categoryPosts),
+      canonicalPath: categoryCanonicalPath(category),
+      sitemapUrl: categorySitemapUrl(category),
+      description: excerpt(
+        `${category} posts from Regressed Ranker: ${sortFeedItems(categoryPosts).slice(0, 4).map((post) => post.title).join(", ")}`,
+        160
+      ),
+      lastmod: isoDate(
+        sortFeedItems(categoryPosts)[0]?.date || new Date()
+      )
+    }));
 }
 
 export function serializeRankingsForClient(rankings = []) {

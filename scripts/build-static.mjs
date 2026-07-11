@@ -5,16 +5,26 @@ import { fetchPosts, fetchRankings } from "./lib/firestore.mjs";
 import {
   SITE_URL,
   buildRecommendationLists,
+  categoryCanonicalPath,
+  categorySitemapUrl,
+  getCategoryTopics,
   getRecommendationTopics,
+  isSimpleListPost,
+  listCanonicalPath,
+  listSitemapUrl,
   postCanonicalPath,
   postDescription,
   postHref,
   postOgImage,
+  recommendationTopicCanonicalPath,
   renderArchiveHtml,
+  renderCategoryHubHtml,
   renderMetaTags,
   renderPostBodyHtml,
   renderPostsGridHtml,
-  renderRecommendationsHtml,
+  renderRecommendationTopicBodyHtml,
+  renderRecommendationsHubHtml,
+  resolvePostSlug,
   serializeFeedForClient,
   serializeRankingsForClient,
   slugify,
@@ -94,17 +104,16 @@ function injectArchive(feedItems) {
   writeFileSync(join(DIST, "archive.html"), html, "utf8");
 }
 
-function renderPostPageShell(post) {
-  const title = `${post.title} | Regressed Ranker`;
-  const description = postDescription(post);
-  const canonicalPath = postCanonicalPath(post);
-  const meta = renderMetaTags({
-    title,
-    description,
-    canonicalPath,
-    image: postOgImage(post),
-    type: "article"
-  });
+function renderStaticPageShell({
+  title,
+  description,
+  canonicalPath,
+  image,
+  type = "website",
+  body,
+  dataPage
+}) {
+  const meta = renderMetaTags({ title, description, canonicalPath, image, type });
 
   return `<!doctype html>
 <html lang="en">
@@ -117,7 +126,7 @@ function renderPostPageShell(post) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
   </head>
-  <body data-page="post">
+  <body data-page="${escapeHtml(dataPage)}">
     <div class="site-shell">
       <header class="public-header">
         <a class="brand" href="/index.html" aria-label="Regressed Ranker home">
@@ -135,7 +144,7 @@ function renderPostPageShell(post) {
       </header>
 
       <main>
-        ${renderPostBodyHtml(post)}
+        ${body}
       </main>
       <footer class="site-footer">
         <a href="/about.html">About</a>
@@ -151,12 +160,56 @@ function renderPostPageShell(post) {
 `;
 }
 
+function renderPostPageShell(post) {
+  const title = `${post.title} | Regressed Ranker`;
+  const description = postDescription(post);
+  const canonicalPath = postCanonicalPath(post);
+
+  return renderStaticPageShell({
+    title,
+    description,
+    canonicalPath,
+    image: postOgImage(post),
+    type: "article",
+    dataPage: isSimpleListPost(post) ? "list" : "post",
+    body: renderPostBodyHtml(post)
+  });
+}
+
+function renderRecommendationTopicPageShell(topicMeta) {
+  const title = `${topicMeta.topic} | Recommendations | Regressed Ranker`;
+
+  return renderStaticPageShell({
+    title,
+    description: topicMeta.description,
+    canonicalPath: topicMeta.canonicalPath,
+    image: topicMeta.image,
+    type: "article",
+    dataPage: "recommendation-topic",
+    body: renderRecommendationTopicBodyHtml(topicMeta.topic, topicMeta.items)
+  });
+}
+
+function renderCategoryPageShell(categoryMeta) {
+  const title = `${categoryMeta.category} | Regressed Ranker`;
+
+  return renderStaticPageShell({
+    title,
+    description: categoryMeta.description,
+    canonicalPath: categoryMeta.canonicalPath,
+    image: `${SITE_URL}/assets/regressed-ranker-hero.jpg`,
+    type: "website",
+    dataPage: "category",
+    body: renderCategoryHubHtml(categoryMeta.category, categoryMeta.posts)
+  });
+}
+
 function injectRecommendations(rankings) {
   let html = readFileSync(join(ROOT, "recommendations.html"), "utf8");
-  const recommendationsHtml = renderRecommendationsHtml(rankings);
+  const recommendationsHtml = renderRecommendationsHubHtml(rankings);
   const topics = getRecommendationTopics(rankings);
   const description = topics.length
-    ? `Anime, manga, and manhua recommendation lists from Regressed Ranker — ${topics.length} curated lists with ranked picks.`
+    ? `Browse ${topics.length} curated anime, manga, and manhua recommendation lists from Regressed Ranker.`
     : "Anime, manga, and manhua recommendations from Regressed Ranker.";
   const rankingsJson = JSON.stringify(serializeRankingsForClient(rankings));
 
@@ -185,11 +238,37 @@ function injectRecommendations(rankings) {
 
 function writePostPages(posts) {
   for (const post of posts) {
-    if (post.kind === "recommendation") continue;
+    if (post.kind === "recommendation" || isSimpleListPost(post)) continue;
     const postId = String(post.id).toLowerCase();
     const dir = join(DIST, "posts", postId);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), renderPostPageShell(post), "utf8");
+  }
+}
+
+function writeListPages(posts) {
+  for (const post of posts) {
+    if (!isSimpleListPost(post)) continue;
+    const slug = resolvePostSlug(post);
+    const dir = join(DIST, "lists", slug);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "index.html"), renderPostPageShell(post), "utf8");
+  }
+}
+
+function writeRecommendationTopicPages(topics) {
+  for (const topicMeta of topics) {
+    const dir = join(DIST, "recommendations", topicMeta.slug);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "index.html"), renderRecommendationTopicPageShell(topicMeta), "utf8");
+  }
+}
+
+function writeCategoryPages(categories) {
+  for (const categoryMeta of categories) {
+    const dir = join(DIST, "category", categoryMeta.slug);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "index.html"), renderCategoryPageShell(categoryMeta), "utf8");
   }
 }
 
@@ -200,7 +279,7 @@ function escapeSitemapLoc(url = "") {
     .replaceAll(">", "&gt;");
 }
 
-function writeSitemap(feedItems, blogPosts, recommendationTopics) {
+function writeSitemap(blogPosts, recommendationTopics, categoryTopics) {
   const staticPages = [
     { loc: `${SITE_URL}/`, changefreq: "weekly", priority: "1.0" },
     { loc: `${SITE_URL}/recommendations.html`, changefreq: "weekly", priority: "0.9" },
@@ -212,8 +291,18 @@ function writeSitemap(feedItems, blogPosts, recommendationTopics) {
   ];
 
   const today = new Date().toISOString().slice(0, 10);
-  const postUrls = blogPosts.map((post) => ({
+  const articlePosts = blogPosts.filter((post) => !isSimpleListPost(post));
+  const listPosts = blogPosts.filter((post) => isSimpleListPost(post));
+
+  const postUrls = articlePosts.map((post) => ({
     loc: `${SITE_URL}${postCanonicalPath(post)}`,
+    lastmod: isoDate(post.date),
+    changefreq: "monthly",
+    priority: "0.7"
+  }));
+
+  const listUrls = listPosts.map((post) => ({
+    loc: listSitemapUrl(post),
     lastmod: isoDate(post.date),
     changefreq: "monthly",
     priority: "0.7"
@@ -226,9 +315,18 @@ function writeSitemap(feedItems, blogPosts, recommendationTopics) {
     priority: "0.65"
   }));
 
+  const categoryUrls = categoryTopics.map((category) => ({
+    loc: category.sitemapUrl,
+    lastmod: category.lastmod,
+    changefreq: "weekly",
+    priority: "0.75"
+  }));
+
   const urls = [
     ...staticPages.map((page) => ({ ...page, lastmod: today })),
+    ...categoryUrls,
     ...postUrls,
+    ...listUrls,
     ...recommendationUrls
   ];
   const body = urls.map((url) => `  <url>
@@ -245,7 +343,7 @@ ${body}
 `;
 
   writeFileSync(join(DIST, "sitemap.xml"), xml, "utf8");
-  console.log(`Wrote sitemap.xml with ${urls.length} URLs (${postUrls.length} posts, ${recommendationUrls.length} recommendations).`);
+  console.log(`Wrote sitemap.xml with ${urls.length} URLs (${categoryUrls.length} categories, ${postUrls.length} articles, ${listUrls.length} lists, ${recommendationUrls.length} recommendations).`);
 }
 
 function writeRobotsTxt() {
@@ -257,7 +355,7 @@ Sitemap: ${SITE_URL}/sitemap.xml
   writeFileSync(join(DIST, "robots.txt"), robots, "utf8");
 }
 
-function writeRedirects(blogPosts) {
+function writeRedirects(blogPosts, recommendationTopics) {
   const lines = [
     "# Legacy post URLs -> static post pages",
     "/index.html?post=:post /posts/:post/ 301",
@@ -266,15 +364,27 @@ function writeRedirects(blogPosts) {
 
   for (const post of blogPosts) {
     const lowerId = String(post.id).toLowerCase();
-    if (lowerId !== post.id) {
+    const listPath = listCanonicalPath(post);
+
+    if (isSimpleListPost(post)) {
+      lines.push(`/posts/${lowerId}/ ${listPath} 301`);
+      lines.push(`/posts/${post.id}/ ${listPath} 301`);
+    } else if (lowerId !== post.id) {
       lines.push(`/posts/${post.id}/ /posts/${lowerId}/ 301`);
       lines.push(`/posts/${post.id} /posts/${lowerId}/ 301`);
     }
+
     const slug = slugify(post.title || "");
     if (slug) {
-      lines.push(`/index.html?post=${post.id}-${slug} /posts/${lowerId}/ 301`);
-      lines.push(`/?post=${post.id}-${slug} /posts/${lowerId}/ 301`);
+      const target = isSimpleListPost(post) ? listPath : `/posts/${lowerId}/`;
+      lines.push(`/index.html?post=${post.id}-${slug} ${target} 301`);
+      lines.push(`/?post=${post.id}-${slug} ${target} 301`);
     }
+  }
+
+  for (const topicMeta of recommendationTopics) {
+    const encodedTopic = encodeURIComponent(topicMeta.topic);
+    lines.push(`/recommendations.html?topic=${encodedTopic} ${topicMeta.canonicalPath} 301`);
   }
 
   writeFileSync(join(DIST, "_redirects"), `${lines.join("\n")}\n`, "utf8");
@@ -290,19 +400,25 @@ async function main() {
   const feedItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
   const blogPosts = posts.filter((post) => post.kind !== "recommendation");
   const recommendationTopics = getRecommendationTopics(rankings);
+  const categoryTopics = getCategoryTopics(blogPosts);
+  const articleCount = blogPosts.filter((post) => !isSimpleListPost(post)).length;
+  const listCount = blogPosts.filter((post) => isSimpleListPost(post)).length;
 
-  console.log(`Found ${posts.length} posts, ${rankings.length} ranking items, and ${recommendationTopics.length} recommendation lists.`);
+  console.log(`Found ${articleCount} articles, ${listCount} character lists, ${rankings.length} ranking items, and ${recommendationTopics.length} recommendation topics.`);
 
   copyStaticAssets();
   injectHomepage(feedItems);
   injectArchive(feedItems);
   injectRecommendations(rankings);
   writePostPages(blogPosts);
-  writeSitemap(feedItems, blogPosts, recommendationTopics);
+  writeListPages(blogPosts);
+  writeRecommendationTopicPages(recommendationTopics);
+  writeCategoryPages(categoryTopics);
+  writeSitemap(blogPosts, recommendationTopics, categoryTopics);
   writeRobotsTxt();
-  writeRedirects(blogPosts);
+  writeRedirects(blogPosts, recommendationTopics);
 
-  console.log(`Built ${blogPosts.length} static post pages and pre-rendered ${recommendationTopics.length} recommendation lists into dist/.`);
+  console.log(`Built ${articleCount} article pages, ${listCount} list pages, ${recommendationTopics.length} recommendation pages, and ${categoryTopics.length} category hubs into dist/.`);
 }
 
 main().catch((error) => {

@@ -95,7 +95,13 @@ function getRecommendationGroupId(topic = "") {
 }
 
 function getRecommendationListHref(topic = "") {
-  return `recommendations.html?topic=${encodeURIComponent(topic)}#${getRecommendationGroupId(topic)}`;
+  const slug = slugify(topic) || "list";
+  return `/recommendations/${encodeURIComponent(slug)}/`;
+}
+
+function listHref(post = {}) {
+  const slug = slugify(post.title || post.id || "list") || slugify(post.id || "list");
+  return `/lists/${encodeURIComponent(slug)}/`;
 }
 
 function excerpt(content = "", max = 150) {
@@ -112,6 +118,9 @@ function normalizeAssetUrl(url = "", fallback = "/assets/regressed-ranker-hero.j
 }
 
 function postHref(post) {
+  if (isSimpleListPost(post)) {
+    return listHref(post);
+  }
   return `/posts/${encodeURIComponent(String(post.id).toLowerCase())}/`;
 }
 
@@ -882,6 +891,22 @@ function initPrerenderedHome(feed) {
   trackPageView({ contentType: "home", contentTitle: "Home" });
 }
 
+function initStaticRecommendationTopic() {
+  trackPageView({
+    contentType: "recommendation_topic",
+    contentTitle: document.querySelector("main h1")?.textContent || document.title,
+    title: document.title
+  });
+}
+
+function initStaticCategoryPage() {
+  trackPageView({
+    contentType: "category",
+    contentTitle: document.querySelector("main h1")?.textContent || document.title,
+    title: document.title
+  });
+}
+
 function initStaticPostPage() {
   const parts = location.pathname.split("/").filter(Boolean);
   const postId = parts[0] === "posts" ? parts[1] : "";
@@ -1028,12 +1053,13 @@ function renderRankings(rankings, openTopic = "", search = "") {
     group.innerHTML = `
       <header class="recommendation-group-title">
         <div>
-          <h2>${escapeHtml(groupTitle)}</h2>
+          <h2><a href="${escapeHtml(getRecommendationListHref(groupTitle))}">${escapeHtml(groupTitle)}</a></h2>
           <p class="recommendation-group-summary">${escapeHtml(summaryText)}</p>
         </div>
         <div class="recommendation-group-meta">
           <span>${sortedItems.length} pick${sortedItems.length === 1 ? "" : "s"}</span>
-          <button class="recommendation-group-toggle" type="button" aria-expanded="false">Open list</button>
+          <a class="recommendation-open-link" href="${escapeHtml(getRecommendationListHref(groupTitle))}">View list</a>
+          <button class="recommendation-group-toggle" type="button" aria-expanded="false">Quick preview</button>
           <a class="recommendation-back-link hidden" href="recommendations.html">Back to all lists</a>
         </div>
       </header>
@@ -1052,7 +1078,7 @@ function renderRankings(rankings, openTopic = "", search = "") {
       if (expanded) collapseOtherGroups(group);
       group.classList.toggle("is-expanded", expanded);
       groupItems.classList.toggle("hidden", !expanded);
-      toggle.textContent = expanded ? "Close list" : "Open list";
+      toggle.textContent = expanded ? "Hide preview" : "Quick preview";
       toggle.setAttribute("aria-expanded", String(expanded));
       backLink.classList.toggle("hidden", !expanded);
       if (options.updateUrl) {
@@ -1151,7 +1177,7 @@ function wirePrerenderedRecommendationGroups(openTopic = "") {
       group.classList.toggle("is-expanded", expanded);
       groupItems?.classList.toggle("hidden", !expanded);
       if (toggle) {
-        toggle.textContent = expanded ? "Close list" : "Open list";
+        toggle.textContent = expanded ? "Hide preview" : "Quick preview";
         toggle.setAttribute("aria-expanded", String(expanded));
       }
       backLink?.classList.toggle("hidden", !expanded);
@@ -1812,7 +1838,9 @@ async function initAdmin() {
 }
 
 if (page === "home") initHome();
-if (page === "post") initStaticPostPage();
+if (page === "post" || page === "list") initStaticPostPage();
+if (page === "recommendation-topic") initStaticRecommendationTopic();
+if (page === "category") initStaticCategoryPage();
 if (page === "rankings") initRankings().catch((error) => console.error(error));
 if (page === "archive") initArchive().catch((error) => console.error(error));
 if (page === "admin") initAdmin();

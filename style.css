@@ -867,6 +867,7 @@ time {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.recommendation-open-link,
 .recommendation-group-toggle,
 .recommendation-back-link {
   display: inline-flex;
@@ -881,9 +882,20 @@ time {
   font-weight: 900;
   background: rgba(18, 18, 20, 0.92);
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+  text-decoration: none;
+}
+
+.recommendation-group-title h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.recommendation-group-title h2 a:hover {
+  color: #ffffff;
 }
 
 .recommendation-group-toggle:hover,
+.recommendation-open-link:hover,
 .recommendation-back-link:hover {
   transform: translateY(-1px);
   color: #ffffff;
@@ -1855,6 +1867,7 @@ select:focus {
 .primary-button,
 .ghost-button,
 .radar-tab,
+.recommendation-open-link,
 .recommendation-group-toggle,
 .recommendation-back-link,
 .archive-group a,
@@ -2182,6 +2195,7 @@ h6 {
 .genre-filter,
 .pagination button,
 .radar-tab,
+.recommendation-open-link,
 .recommendation-group-toggle,
 .recommendation-back-link,
 .ghost-button,
