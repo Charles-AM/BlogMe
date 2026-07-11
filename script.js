@@ -103,6 +103,14 @@ function excerpt(content = "", max = 150) {
   return plain.length > max ? `${plain.slice(0, max).trim()}...` : plain;
 }
 
+function normalizeAssetUrl(url = "", fallback = "/assets/regressed-ranker-hero.jpg") {
+  const trimmed = String(url || "").trim();
+  if (!trimmed) return fallback;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("/")) return trimmed;
+  return `/${trimmed.replace(/^\//, "")}`;
+}
+
 function postHref(post) {
   return `/posts/${encodeURIComponent(String(post.id).toLowerCase())}/`;
 }
@@ -183,7 +191,7 @@ function renderSimpleListItemsHtml(items = []) {
     <article class="simple-list-entry">
       <span class="simple-list-rank">${String(index + 1).padStart(2, "0")}</span>
       <figure class="simple-list-media">
-        <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.characterName || "Character")}">
+        <img src="${escapeHtml(normalizeAssetUrl(item.imageUrl))}" alt="${escapeHtml(item.characterName || "Character")}">
       </figure>
       <div class="simple-list-copy">
         <h2>${escapeHtml(item.characterName)}</h2>
@@ -268,7 +276,7 @@ function buildRecommendationLists(rankings = []) {
       id: slugify(topic),
       kind: "recommendation",
       title: topic,
-      imageUrl: first.imageUrl || "assets/regressed-ranker-hero.jpg",
+      imageUrl: normalizeAssetUrl(first.imageUrl || "assets/regressed-ranker-hero.jpg"),
       content: titles,
       date: getRecommendationDate(sortedItems),
       category: "Recommendations",
@@ -553,7 +561,7 @@ function renderPostCards(posts, options = {}) {
       card.classList.add("featured-post-card");
     }
     link.href = post.href || postHref(post);
-    img.src = post.imageUrl;
+    img.src = normalizeAssetUrl(post.imageUrl);
     img.alt = post.title;
     clone.querySelector(".category-badge").textContent = post.category || "Anime";
     clone.querySelector("time").textContent = formatDate(post.date);
@@ -694,7 +702,7 @@ function renderAnimeRadarCards(items = []) {
     ].filter(Boolean).slice(0, 2).join(" · ");
 
     card.href = anime.url;
-    image.src = anime.imageUrl || "assets/regressed-ranker-hero.jpg";
+    image.src = normalizeAssetUrl(anime.imageUrl);
     image.alt = `${anime.title} cover art`;
     score.textContent = anime.score ? `★ ${Number(anime.score).toFixed(1)}` : "New";
     clone.querySelector("h3").textContent = anime.title;
@@ -776,7 +784,7 @@ async function renderPostView(postId) {
         ${backLink}
         <h1>${escapeHtml(post.title)}</h1>
         ${meta}
-        <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
+        <img src="${escapeHtml(normalizeAssetUrl(post.imageUrl))}" alt="${escapeHtml(post.title)}">
         <div class="post-content">${parseMarkdown(post.content)}</div>
       </article>
     `;
@@ -823,6 +831,7 @@ function wirePrerenderedPagination() {
         card.classList.toggle("hidden", !areRecentPostsExpanded);
       }
     });
+    filterPrerenderedCards();
     const hiddenCount = cards.length - RECENT_POSTS_COLLAPSED_COUNT;
     button.textContent = areRecentPostsExpanded
       ? "Show fewer posts"
@@ -837,12 +846,30 @@ function wirePrerenderedPagination() {
 function filterPrerenderedCards() {
   const search = ($("#post-search")?.value || "").trim().toLowerCase();
   const category = $("#post-category-filter")?.value || "all";
-  $("#posts-grid")?.querySelectorAll(".post-card").forEach((card) => {
+  const hasActiveFilter = Boolean(search) || category !== "all";
+  const cards = [...$("#posts-grid")?.querySelectorAll(".post-card") || []];
+
+  cards.forEach((card, index) => {
     const badge = card.querySelector(".category-badge")?.textContent?.trim() || "";
     const text = card.textContent?.toLowerCase() || "";
     const matchesSearch = !search || text.includes(search);
     const matchesCategory = category === "all" || badge === category;
-    card.classList.toggle("filter-hidden", !(matchesSearch && matchesCategory));
+    const visible = matchesSearch && matchesCategory;
+
+    card.classList.toggle("filter-hidden", !visible);
+
+    if (!visible) return;
+
+    if (hasActiveFilter) {
+      card.classList.remove("hidden");
+      return;
+    }
+
+    if (!areRecentPostsExpanded && index >= RECENT_POSTS_COLLAPSED_COUNT) {
+      card.classList.add("hidden");
+    } else {
+      card.classList.remove("hidden");
+    }
   });
 }
 
@@ -1049,7 +1076,7 @@ function renderRankings(rankings, openTopic = "", search = "") {
       const rating = getRatingValue(item);
       const rankNumber = clone.querySelector(".rank-number");
       if (rankNumber) rankNumber.textContent = rank === Number.MAX_SAFE_INTEGER ? "#" : `#${rank}`;
-      clone.querySelector(".ranking-image").src = item.imageUrl || "assets/regressed-ranker-hero.jpg";
+      clone.querySelector(".ranking-image").src = normalizeAssetUrl(item.imageUrl);
       clone.querySelector(".ranking-image").alt = item.title || "Recommendation artwork";
       clone.querySelector("h3").textContent = item.title || "Untitled recommendation";
       const label = getRecommendationLabel(item);

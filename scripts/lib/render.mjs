@@ -118,7 +118,7 @@ export function renderSimpleListItemsHtml(items = []) {
     <article class="simple-list-entry">
       <span class="simple-list-rank">${String(index + 1).padStart(2, "0")}</span>
       <figure class="simple-list-media">
-        <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.characterName || "Character")}">
+        <img src="${escapeHtml(normalizeAssetUrl(item.imageUrl))}" alt="${escapeHtml(item.characterName || "Character")}">
       </figure>
       <div class="simple-list-copy">
         <h2>${escapeHtml(item.characterName)}</h2>
@@ -167,10 +167,19 @@ export function postDescription(post = {}) {
   return excerpt(post.content || post.title, 160);
 }
 
+export function normalizeAssetUrl(url = "", fallback = "/assets/regressed-ranker-hero.jpg") {
+  const trimmed = String(url || "").trim();
+  if (!trimmed) return fallback;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("/")) return trimmed;
+  return `/${trimmed.replace(/^\//, "")}`;
+}
+
 export function postOgImage(post = {}) {
   const image = String(post.imageUrl || "").trim();
   if (image.startsWith("http")) return image;
-  if (image) return `${SITE_URL}/${image.replace(/^\//, "")}`;
+  const normalized = normalizeAssetUrl(image, "");
+  if (normalized) return `${SITE_URL}${normalized}`;
   return `${SITE_URL}/assets/regressed-ranker-hero.jpg`;
 }
 
@@ -234,7 +243,7 @@ export function renderPostCardHtml(post, index = 0, options = {}) {
     <article class="${classes.join(" ")}">
       <a class="post-card-link" href="${escapeHtml(href)}">
         <div class="image-wrap">
-          <img alt="${escapeHtml(post.title)}" src="${escapeHtml(post.imageUrl || "assets/regressed-ranker-hero.jpg")}">
+          <img alt="${escapeHtml(post.title)}" src="${escapeHtml(normalizeAssetUrl(post.imageUrl))}">
           <span class="category-badge">${escapeHtml(post.category || "Anime")}</span>
           <span class="list-only-badge${listBadgeHidden}">List only</span>
         </div>
@@ -322,7 +331,7 @@ export function renderPostBodyHtml(post) {
       ${backLink}
       <h1>${escapeHtml(post.title)}</h1>
       ${meta}
-      <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}">
+      <img src="${escapeHtml(normalizeAssetUrl(post.imageUrl))}" alt="${escapeHtml(post.title)}">
       <div class="post-content">${parseMarkdown(post.content || "")}</div>
     </article>
   `.trim();
@@ -403,7 +412,7 @@ export function buildRecommendationLists(rankings = []) {
       id: slugify(topic),
       kind: "recommendation",
       title: topic,
-      imageUrl: first.imageUrl || "assets/regressed-ranker-hero.jpg",
+      imageUrl: normalizeAssetUrl(first.imageUrl || "assets/regressed-ranker-hero.jpg"),
       content: titles,
       date: getRecommendationDate(sortedItems),
       category: "Recommendations",
@@ -466,7 +475,7 @@ function renderRankingRowHtml(item, groupTitle) {
   return `
     <article class="ranking-row reveal-card" aria-label="${escapeHtml(item.title || "Untitled")} recommendation">
       <div class="ranking-media">
-        <img class="ranking-image" alt="${escapeHtml(item.title || "Recommendation artwork")}" src="${escapeHtml(item.imageUrl || "assets/regressed-ranker-hero.jpg")}">
+        <img class="ranking-image" alt="${escapeHtml(item.title || "Recommendation artwork")}" src="${escapeHtml(normalizeAssetUrl(item.imageUrl))}">
       </div>
       <div class="ranking-copy">
         <div class="ranking-title-line">
