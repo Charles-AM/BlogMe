@@ -40,6 +40,18 @@
 
         <section class="admin-dashboard hidden" id="admin-dashboard">
           <div class="admin-grid">
+            <section class="admin-card admin-deploy-card">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Deploy</p>
+                  <h2>Update live site</h2>
+                </div>
+                <button class="primary-button" id="rebuild-site-button" type="button">Rebuild live site</button>
+              </div>
+              <p class="helper-text">After publishing a post or recommendation, click rebuild. Wait 2–5 minutes for Netlify to finish. Pasting the build hook URL in your browser does not work — use this button.</p>
+              <p class="form-message" id="rebuild-message" role="status"></p>
+            </section>
+
             <section class="admin-card admin-note">
               <p class="helper-text">Tip: click an image field and paste an image to upload it. Firebase Storage must be enabled.</p>
             </section>

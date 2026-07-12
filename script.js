@@ -1,4 +1,4 @@
-import { adminUid, firebaseConfig } from "./firebase-config.js";
+import { adminUid, firebaseConfig, netlifyBuildHookUrl } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore,
@@ -1654,12 +1654,34 @@ async function loadAdminAnalytics() {
   }
 }
 
+async function triggerSiteRebuild(messageNode = $("#rebuild-message")) {
+  if (!netlifyBuildHookUrl) {
+    showMessage(messageNode, "Build hook URL is not configured.", true);
+    return false;
+  }
+  const button = $("#rebuild-site-button");
+  setLoading(button, "Starting rebuild...", true);
+  try {
+    const response = await fetch(netlifyBuildHookUrl, { method: "POST", body: "{}" });
+    if (!response.ok) throw new Error(`Rebuild request failed: ${response.status}`);
+    showMessage(messageNode, "Rebuild started. Give Netlify 2–5 minutes, then refresh the homepage.");
+    return true;
+  } catch (error) {
+    console.error(error);
+    showMessage(messageNode, "Could not start rebuild. Open Netlify → Deploys → Trigger deploy.", true);
+    return false;
+  } finally {
+    setLoading(button, "Starting rebuild...", false);
+  }
+}
+
 function wireAdminData() {
   resetPostForm();
   $("#reset-post-form").onclick = resetPostForm;
   $("#post-type")?.addEventListener("change", syncPostFormType);
   if ($("#reset-ranking-form")) $("#reset-ranking-form").onclick = resetRankingForm;
   if ($("#refresh-analytics")) $("#refresh-analytics").onclick = loadAdminAnalytics;
+  if ($("#rebuild-site-button")) $("#rebuild-site-button").onclick = () => triggerSiteRebuild();
   loadAdminAnalytics();
   setupImagePaste($("#post-image"), "posts", $("#post-message"));
   setupImagePaste($("#ranking-image"), "recommendations", $("#ranking-message"));
@@ -1688,7 +1710,7 @@ function wireAdminData() {
       }
       if (id) await setDoc(doc(db, "posts", id), data, { merge: true });
       else await addDoc(collection(db, "posts"), { ...data, createdAt: serverTimestamp() });
-      showMessage($("#post-message"), "Post saved.");
+      showMessage($("#post-message"), "Post saved. Click Rebuild live site above to update the public HTML.");
       saved = true;
     } catch (error) {
       showMessage($("#post-message"), "Could not save the post. Check Firestore rules.", true);
@@ -1710,7 +1732,7 @@ function wireAdminData() {
         const isEditing = Boolean(id);
         if (isEditing) await setDoc(doc(db, "rankings", id), data, { merge: true });
         else await addDoc(collection(db, "rankings"), { ...data, createdAt: serverTimestamp() });
-        showMessage($("#ranking-message"), "Recommendation saved.");
+        showMessage($("#ranking-message"), "Recommendation saved. Click Rebuild live site above to update the public HTML.");
         saved = true;
       } catch (error) {
         showMessage($("#ranking-message"), "Could not save the recommendation. Check Firestore rules.", true);

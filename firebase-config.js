@@ -13,3 +13,6 @@ export const firebaseConfig = {
 // Optional: paste your Firebase Authentication admin user's UID here.
 // This is a client-side convenience check only. Firestore rules still enforce writes.
 export const adminUid = "";
+
+// Netlify build hook: triggers a site rebuild after you publish content.
+export const netlifyBuildHookUrl = "https://api.netlify.com/build_hooks/6a526eac57c9fc94b0e4dc31";
