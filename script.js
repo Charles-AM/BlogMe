@@ -192,7 +192,7 @@ function simpleListSearchText(post = {}) {
 
 function simpleListLede(items = []) {
   const count = normalizeListItems(items).length;
-  return `${count} character${count === 1 ? "" : "s"} · image and name only`;
+  return `${count} character${count === 1 ? "" : "s"}`;
 }
 
 function renderSimpleListItemsHtml(items = []) {

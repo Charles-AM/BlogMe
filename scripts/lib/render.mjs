@@ -138,7 +138,7 @@ export function postCardPreview(post = {}, limit = 2) {
 
 export function simpleListLede(items = []) {
   const count = normalizeListItems(items).length;
-  return `${count} character${count === 1 ? "" : "s"} · image and name only`;
+  return `${count} character${count === 1 ? "" : "s"}`;
 }
 
 export function renderSimpleListItemsHtml(items = []) {
