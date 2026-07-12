@@ -338,9 +338,11 @@ export function renderPostBodyHtml(post) {
   `;
 
   if (isSimpleListPost(post)) {
+    const backLink = '<a class="post-back-link" data-back-link href="/index.html#posts-grid">← Back to reads</a>';
     return `
       <article class="post-view post-view-simple-list">
         <header class="simple-list-header">
+          ${backLink}
           <p class="simple-list-eyebrow">List only</p>
           <h1>${escapeHtml(post.title)}</h1>
           ${meta}

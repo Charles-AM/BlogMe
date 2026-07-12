@@ -774,9 +774,11 @@ async function renderPostView(postId) {
   `;
 
   if (isSimpleListPost(post)) {
+    const listBackLink = '<a class="post-back-link" data-back-link href="index.html#posts-grid">← Back to reads</a>';
     main.innerHTML = `
       <article class="post-view post-view-simple-list">
         <header class="simple-list-header">
+          ${listBackLink}
           <p class="simple-list-eyebrow">List only</p>
           <h1>${escapeHtml(post.title)}</h1>
           ${meta}
