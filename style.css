@@ -1258,7 +1258,8 @@ time {
   border-bottom: 1px solid var(--line);
 }
 
-.recommendation-topic-header .post-back-link {
+.recommendation-topic-header .post-back-link,
+.simple-list-header .post-back-link {
   margin-bottom: 14px;
 }
 
