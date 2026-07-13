@@ -1015,6 +1015,14 @@ time {
   line-height: 1.5;
 }
 
+.check-featured-copy .read-chip {
+  justify-self: start;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .check-picks {
   display: grid;
   gap: 10px;
