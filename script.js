@@ -38,14 +38,17 @@ const RECENT_POSTS_COLLAPSED_COUNT = 6;
 const SIMPLE_LIST_MAX_ITEMS = 5;
 const ANALYTICS_COLLECTION = "analyticsEvents";
 const ANALYTICS_RECENT_LIMIT = 500;
-const CHECK_THESE_OUT_ROTATE_COUNT = 3;
-const CHECK_THESE_OUT_ROTATE_MS = 6000;
+const CHECK_THESE_OUT_ROTATE_COUNT = 5;
+const CHECK_THESE_OUT_ROTATE_COUNT_MOBILE = 3;
+const CHECK_THESE_OUT_ROTATE_MS = 300000;
 let homePosts = [];
 let currentRankings = [];
 let areRecentPostsExpanded = false;
 let checkTheseOutRotateIndex = 0;
 let checkTheseOutTimer = null;
 let checkTheseOutRecommendations = [];
+let checkTheseOutLatestPosts = [];
+const checkTheseOutDesktopMq = window.matchMedia("(min-width: 921px)");
 
 const AI_REVIEW_PROMPT =
   "Write a short anime review (150-300 words) as a passionate human journalist. Use short sentences, occasional humor, genuine emotion, and a natural voice. Avoid bullet points, lists, and formal language. Make it feel personal, like a friend recommending an anime. Do not include any AI-sounding phrases such as 'as an AI' or 'in conclusion'. Just write the review.";
@@ -646,6 +649,14 @@ function applyPostFilters() {
   renderPostCards(filtered);
 }
 
+function getCheckTheseOutPickCount() {
+  return checkTheseOutDesktopMq.matches ? CHECK_THESE_OUT_ROTATE_COUNT : CHECK_THESE_OUT_ROTATE_COUNT_MOBILE;
+}
+
+function shouldRotateCheckTheseOut() {
+  return checkTheseOutRecommendations.length > getCheckTheseOutPickCount();
+}
+
 function getLatestBlogPost(posts = []) {
   const blogPosts = posts.filter((post) => post.kind !== "recommendation");
   const articles = blogPosts.filter((post) => !isSimpleListPost(post));
@@ -707,7 +718,7 @@ function rotateCheckPicks() {
   const picksContainer = $("#check-picks");
   if (!picksContainer) return;
 
-  const nextPicks = getRotatingPicks(checkTheseOutRecommendations, checkTheseOutRotateIndex);
+  const nextPicks = getRotatingPicks(checkTheseOutRecommendations, checkTheseOutRotateIndex, getCheckTheseOutPickCount());
   picksContainer.querySelectorAll(".check-pick-card").forEach((card) => {
     card.classList.add("is-rotating-out");
   });
@@ -721,9 +732,27 @@ function rotateCheckPicks() {
   }, 280);
 }
 
+function refreshCheckPicks() {
+  const picksContainer = $("#check-picks");
+  if (!picksContainer) return;
+  const nextPicks = getRotatingPicks(checkTheseOutRecommendations, checkTheseOutRotateIndex, getCheckTheseOutPickCount());
+  picksContainer.innerHTML = nextPicks.map((rec) => renderCheckPickCardHtml(rec)).join("");
+}
+
+function wireCheckTheseOutResize() {
+  if (wireCheckTheseOutResize.wired) return;
+  wireCheckTheseOutResize.wired = true;
+  checkTheseOutDesktopMq.addEventListener("change", () => {
+    if (!checkTheseOutRecommendations.length) return;
+    refreshCheckPicks();
+    if (shouldRotateCheckTheseOut()) startCheckTheseOutRotation();
+    else stopCheckTheseOutRotation();
+  });
+}
+
 function startCheckTheseOutRotation() {
   stopCheckTheseOutRotation();
-  if (checkTheseOutRecommendations.length <= CHECK_THESE_OUT_ROTATE_COUNT) return;
+  if (!shouldRotateCheckTheseOut()) return;
 
   checkTheseOutTimer = window.setInterval(() => {
     checkTheseOutRotateIndex = (checkTheseOutRotateIndex + 1) % checkTheseOutRecommendations.length;
@@ -738,8 +767,10 @@ function renderCheckTheseOut(posts = [], rankings = [], options = {}) {
 
   const latest = getLatestBlogPost(posts);
   const recommendations = options.recommendations || buildRecommendationLists(rankings);
+  checkTheseOutLatestPosts = posts;
   checkTheseOutRecommendations = recommendations;
   checkTheseOutRotateIndex = options.rotateIndex ?? checkTheseOutRotateIndex;
+  wireCheckTheseOutResize();
 
   if (!latest && !recommendations.length) {
     grid.innerHTML = "";
@@ -749,13 +780,13 @@ function renderCheckTheseOut(posts = [], rankings = [], options = {}) {
   }
 
   empty?.classList.add("hidden");
-  const picks = getRotatingPicks(recommendations, checkTheseOutRotateIndex);
+  const picks = getRotatingPicks(recommendations, checkTheseOutRotateIndex, getCheckTheseOutPickCount());
   grid.innerHTML = `
     ${latest ? renderCheckFeaturedCardHtml(latest) : ""}
     ${picks.length ? `<div class="check-picks" id="check-picks">${picks.map((rec) => renderCheckPickCardHtml(rec)).join("")}</div>` : ""}
   `.trim();
 
-  if (recommendations.length > CHECK_THESE_OUT_ROTATE_COUNT) {
+  if (shouldRotateCheckTheseOut()) {
     startCheckTheseOutRotation();
   } else {
     stopCheckTheseOutRotation();
@@ -775,7 +806,8 @@ function readPrerenderedCheckTheseOut() {
 function initCheckTheseOutFromData(data) {
   if (!data) return;
   checkTheseOutRecommendations = data.recommendations || [];
-  if ($("#check-picks") && checkTheseOutRecommendations.length > CHECK_THESE_OUT_ROTATE_COUNT) {
+  wireCheckTheseOutResize();
+  if ($("#check-picks") && shouldRotateCheckTheseOut()) {
     startCheckTheseOutRotation();
   }
 }
