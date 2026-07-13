@@ -35,11 +35,12 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const page = document.body.dataset.page;
 const RECENT_POSTS_COLLAPSED_COUNT = 6;
+const RECENT_POSTS_COLLAPSED_COUNT_MOBILE = 3;
 const SIMPLE_LIST_MAX_ITEMS = 5;
 const ANALYTICS_COLLECTION = "analyticsEvents";
 const ANALYTICS_RECENT_LIMIT = 500;
 const CHECK_THESE_OUT_ROTATE_COUNT = 5;
-const CHECK_THESE_OUT_ROTATE_COUNT_MOBILE = 3;
+const CHECK_THESE_OUT_ROTATE_COUNT_MOBILE = 4;
 const CHECK_THESE_OUT_ROTATE_MS = 300000;
 let homePosts = [];
 let currentRankings = [];
@@ -556,7 +557,8 @@ function renderPostCards(posts, options = {}) {
   const pagination = $("#pagination");
   const template = $("#post-card-template");
   const isExpanded = options.expanded ?? areRecentPostsExpanded;
-  const visiblePosts = isExpanded ? posts : posts.slice(0, RECENT_POSTS_COLLAPSED_COUNT);
+  const collapsedCount = getRecentPostsCollapsedCount();
+  const visiblePosts = isExpanded ? posts : posts.slice(0, collapsedCount);
 
   grid.innerHTML = "";
   pagination.innerHTML = "";
@@ -598,8 +600,8 @@ function renderPostCards(posts, options = {}) {
     grid.append(clone);
   });
 
-  if (posts.length > RECENT_POSTS_COLLAPSED_COUNT) {
-    const hiddenCount = posts.length - RECENT_POSTS_COLLAPSED_COUNT;
+  if (posts.length > collapsedCount) {
+    const hiddenCount = posts.length - collapsedCount;
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = isExpanded ? "Show fewer posts" : `Show ${hiddenCount} more post${hiddenCount === 1 ? "" : "s"}`;
@@ -647,6 +649,10 @@ function applyPostFilters() {
   });
   areRecentPostsExpanded = false;
   renderPostCards(filtered);
+}
+
+function getRecentPostsCollapsedCount() {
+  return checkTheseOutDesktopMq.matches ? RECENT_POSTS_COLLAPSED_COUNT : RECENT_POSTS_COLLAPSED_COUNT_MOBILE;
 }
 
 function getCheckTheseOutPickCount() {
@@ -699,7 +705,7 @@ function renderCheckPickCardHtml(rec) {
     <a class="check-pick-card reveal-card" href="${escapeHtml(href)}" data-check-pick>
       <img src="${escapeHtml(normalizeAssetUrl(rec.imageUrl))}" alt="">
       <div>
-        <span class="check-pick-label">List</span>
+        <span class="check-pick-label">Read</span>
         <h3>${escapeHtml(rec.title)}</h3>
         <p>${escapeHtml(postCardPreview(rec))}</p>
       </div>
@@ -815,6 +821,7 @@ function initCheckTheseOutFromData(data) {
 function setupPostFilters(posts) {
   homePosts = posts;
   populatePostCategoryFilter(posts);
+  wireRecentPostsResize();
   $("#post-search")?.addEventListener("input", applyPostFilters);
   $("#post-category-filter")?.addEventListener("change", applyPostFilters);
   applyPostFilters();
@@ -892,6 +899,37 @@ function readPrerenderedFeed() {
   }
 }
 
+function syncRecentPostsPaginationButton() {
+  const button = $("#pagination")?.querySelector("button");
+  const grid = $("#posts-grid");
+  if (!button || !grid) return;
+  const cards = [...grid.querySelectorAll(".post-card")];
+  const collapsedCount = getRecentPostsCollapsedCount();
+  const hiddenCount = cards.length - collapsedCount;
+  if (hiddenCount <= 0) {
+    button.remove();
+    return;
+  }
+  button.textContent = areRecentPostsExpanded
+    ? "Show fewer posts"
+    : `Show ${hiddenCount} more post${hiddenCount === 1 ? "" : "s"}`;
+  button.setAttribute("aria-expanded", String(areRecentPostsExpanded));
+}
+
+function wireRecentPostsResize() {
+  if (wireRecentPostsResize.wired) return;
+  wireRecentPostsResize.wired = true;
+  checkTheseOutDesktopMq.addEventListener("change", () => {
+    areRecentPostsExpanded = false;
+    if ($("#posts-grid")?.querySelector(".post-card")) {
+      filterPrerenderedCards();
+      syncRecentPostsPaginationButton();
+      return;
+    }
+    if (homePosts.length) applyPostFilters();
+  });
+}
+
 function wirePrerenderedPagination() {
   const button = $("#pagination")?.querySelector("button");
   const grid = $("#posts-grid");
@@ -899,18 +937,15 @@ function wirePrerenderedPagination() {
 
   button.addEventListener("click", () => {
     areRecentPostsExpanded = !areRecentPostsExpanded;
+    const collapsedCount = getRecentPostsCollapsedCount();
     const cards = [...grid.querySelectorAll(".post-card")];
     cards.forEach((card, index) => {
-      if (index >= RECENT_POSTS_COLLAPSED_COUNT) {
+      if (index >= collapsedCount) {
         card.classList.toggle("hidden", !areRecentPostsExpanded);
       }
     });
     filterPrerenderedCards();
-    const hiddenCount = cards.length - RECENT_POSTS_COLLAPSED_COUNT;
-    button.textContent = areRecentPostsExpanded
-      ? "Show fewer posts"
-      : `Show ${hiddenCount} more post${hiddenCount === 1 ? "" : "s"}`;
-    button.setAttribute("aria-expanded", String(areRecentPostsExpanded));
+    syncRecentPostsPaginationButton();
     if (!areRecentPostsExpanded) {
       grid.scrollIntoView({ block: "start", behavior: "smooth" });
     }
@@ -922,6 +957,7 @@ function filterPrerenderedCards() {
   const category = $("#post-category-filter")?.value || "all";
   const hasActiveFilter = Boolean(search) || category !== "all";
   const cards = [...$("#posts-grid")?.querySelectorAll(".post-card") || []];
+  const collapsedCount = getRecentPostsCollapsedCount();
 
   cards.forEach((card, index) => {
     const badge = card.querySelector(".category-badge")?.textContent?.trim() || "";
@@ -939,7 +975,7 @@ function filterPrerenderedCards() {
       return;
     }
 
-    if (!areRecentPostsExpanded && index >= RECENT_POSTS_COLLAPSED_COUNT) {
+    if (!areRecentPostsExpanded && index >= collapsedCount) {
       card.classList.add("hidden");
     } else {
       card.classList.remove("hidden");
@@ -952,7 +988,10 @@ function initPrerenderedHome(feed) {
   populatePostCategoryFilter(feed);
   $("#post-search")?.addEventListener("input", filterPrerenderedCards);
   $("#post-category-filter")?.addEventListener("change", filterPrerenderedCards);
+  wireRecentPostsResize();
   wirePrerenderedPagination();
+  filterPrerenderedCards();
+  syncRecentPostsPaginationButton();
   initCheckTheseOutFromData(readPrerenderedCheckTheseOut());
   trackPageView({ contentType: "home", contentTitle: "Home" });
 }

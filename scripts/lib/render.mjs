@@ -1,8 +1,9 @@
 const SITE_URL = "https://regressedranker.xyz";
 const RECENT_POSTS_COLLAPSED_COUNT = 6;
+const RECENT_POSTS_COLLAPSED_COUNT_MOBILE = 3;
 const SIMPLE_LIST_MAX_ITEMS = 5;
 const CHECK_THESE_OUT_ROTATE_COUNT = 5;
-const CHECK_THESE_OUT_ROTATE_COUNT_MOBILE = 3;
+const CHECK_THESE_OUT_ROTATE_COUNT_MOBILE = 4;
 const CHECK_THESE_OUT_ROTATE_MS = 300000;
 
 export { SITE_URL, RECENT_POSTS_COLLAPSED_COUNT, CHECK_THESE_OUT_ROTATE_COUNT, CHECK_THESE_OUT_ROTATE_COUNT_MOBILE, CHECK_THESE_OUT_ROTATE_MS };
@@ -518,7 +519,7 @@ function renderCheckPickCardHtml(rec) {
     <a class="check-pick-card reveal-card" href="${escapeHtml(href)}" data-check-pick>
       <img src="${escapeHtml(normalizeAssetUrl(rec.imageUrl))}" alt="">
       <div>
-        <span class="check-pick-label">List</span>
+        <span class="check-pick-label">Read</span>
         <h3>${escapeHtml(rec.title)}</h3>
         <p>${escapeHtml(postCardPreview(rec))}</p>
       </div>

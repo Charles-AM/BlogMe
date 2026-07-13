@@ -2036,7 +2036,7 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
-  .check-pick-card:nth-child(n + 4) {
+  .check-pick-card:nth-child(n + 5) {
     display: none;
   }
 
