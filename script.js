@@ -34,14 +34,18 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 const page = document.body.dataset.page;
-const RECENT_POSTS_COLLAPSED_COUNT = 3;
+const RECENT_POSTS_COLLAPSED_COUNT = 6;
 const SIMPLE_LIST_MAX_ITEMS = 5;
 const ANALYTICS_COLLECTION = "analyticsEvents";
 const ANALYTICS_RECENT_LIMIT = 500;
-const JIKAN_CACHE_TTL = 1000 * 60 * 60 * 6;
+const CHECK_THESE_OUT_ROTATE_COUNT = 3;
+const CHECK_THESE_OUT_ROTATE_MS = 6000;
 let homePosts = [];
 let currentRankings = [];
 let areRecentPostsExpanded = false;
+let checkTheseOutRotateIndex = 0;
+let checkTheseOutTimer = null;
+let checkTheseOutRecommendations = [];
 
 const AI_REVIEW_PROMPT =
   "Write a short anime review (150-300 words) as a passionate human journalist. Use short sentences, occasional humor, genuine emotion, and a natural voice. Avoid bullet points, lists, and formal language. Make it feel personal, like a friend recommending an anime. Do not include any AI-sounding phrases such as 'as an AI' or 'in conclusion'. Just write the review.";
@@ -642,119 +646,146 @@ function applyPostFilters() {
   renderPostCards(filtered);
 }
 
+function getLatestBlogPost(posts = []) {
+  const blogPosts = posts.filter((post) => post.kind !== "recommendation");
+  const articles = blogPosts.filter((post) => !isSimpleListPost(post));
+  const pool = articles.length ? articles : blogPosts;
+  return sortFeedItems(pool)[0] || null;
+}
+
+function getRotatingPicks(recommendations = [], startIndex = 0, count = CHECK_THESE_OUT_ROTATE_COUNT) {
+  if (!recommendations.length) return [];
+  const limit = Math.min(count, recommendations.length);
+  const picks = [];
+  for (let i = 0; i < limit; i++) {
+    picks.push(recommendations[(startIndex + i) % recommendations.length]);
+  }
+  return picks;
+}
+
+function renderCheckFeaturedCardHtml(post) {
+  const href = post.href || postHref(post);
+  const action = isSimpleListPost(post) ? "List only" : "Read";
+  return `
+    <a class="check-featured-card reveal-card" href="${escapeHtml(href)}">
+      <div class="check-featured-media">
+        <img src="${escapeHtml(normalizeAssetUrl(post.imageUrl))}" alt="${escapeHtml(post.title)}">
+        <span class="check-featured-badge">${escapeHtml(post.category || "Anime")}</span>
+      </div>
+      <div class="check-featured-copy">
+        <p class="check-featured-label">Latest read</p>
+        <h3>${escapeHtml(post.title)}</h3>
+        <p>${escapeHtml(postCardPreview(post))}</p>
+        <span class="read-chip">${action}</span>
+      </div>
+    </a>
+  `.trim();
+}
+
+function renderCheckPickCardHtml(rec) {
+  const href = rec.href || getRecommendationListHref(rec.title);
+  return `
+    <a class="check-pick-card reveal-card" href="${escapeHtml(href)}" data-check-pick>
+      <img src="${escapeHtml(normalizeAssetUrl(rec.imageUrl))}" alt="">
+      <div>
+        <span class="check-pick-label">List</span>
+        <h3>${escapeHtml(rec.title)}</h3>
+        <p>${escapeHtml(postCardPreview(rec))}</p>
+      </div>
+    </a>
+  `.trim();
+}
+
+function stopCheckTheseOutRotation() {
+  if (checkTheseOutTimer) {
+    clearInterval(checkTheseOutTimer);
+    checkTheseOutTimer = null;
+  }
+}
+
+function rotateCheckPicks() {
+  const picksContainer = $("#check-picks");
+  if (!picksContainer) return;
+
+  const nextPicks = getRotatingPicks(checkTheseOutRecommendations, checkTheseOutRotateIndex);
+  picksContainer.querySelectorAll(".check-pick-card").forEach((card) => {
+    card.classList.add("is-rotating-out");
+  });
+
+  window.setTimeout(() => {
+    picksContainer.innerHTML = nextPicks.map((rec) => renderCheckPickCardHtml(rec)).join("");
+    picksContainer.querySelectorAll(".check-pick-card").forEach((card) => {
+      card.classList.add("is-rotating-in");
+      requestAnimationFrame(() => card.classList.remove("is-rotating-in"));
+    });
+  }, 280);
+}
+
+function startCheckTheseOutRotation() {
+  stopCheckTheseOutRotation();
+  if (checkTheseOutRecommendations.length <= CHECK_THESE_OUT_ROTATE_COUNT) return;
+
+  checkTheseOutTimer = window.setInterval(() => {
+    checkTheseOutRotateIndex = (checkTheseOutRotateIndex + 1) % checkTheseOutRecommendations.length;
+    rotateCheckPicks();
+  }, CHECK_THESE_OUT_ROTATE_MS);
+}
+
+function renderCheckTheseOut(posts = [], rankings = [], options = {}) {
+  const grid = $("#check-these-out-grid");
+  const empty = $("#check-these-out-empty");
+  if (!grid) return;
+
+  const latest = getLatestBlogPost(posts);
+  const recommendations = options.recommendations || buildRecommendationLists(rankings);
+  checkTheseOutRecommendations = recommendations;
+  checkTheseOutRotateIndex = options.rotateIndex ?? checkTheseOutRotateIndex;
+
+  if (!latest && !recommendations.length) {
+    grid.innerHTML = "";
+    empty?.classList.remove("hidden");
+    stopCheckTheseOutRotation();
+    return;
+  }
+
+  empty?.classList.add("hidden");
+  const picks = getRotatingPicks(recommendations, checkTheseOutRotateIndex);
+  grid.innerHTML = `
+    ${latest ? renderCheckFeaturedCardHtml(latest) : ""}
+    ${picks.length ? `<div class="check-picks" id="check-picks">${picks.map((rec) => renderCheckPickCardHtml(rec)).join("")}</div>` : ""}
+  `.trim();
+
+  if (recommendations.length > CHECK_THESE_OUT_ROTATE_COUNT) {
+    startCheckTheseOutRotation();
+  } else {
+    stopCheckTheseOutRotation();
+  }
+}
+
+function readPrerenderedCheckTheseOut() {
+  const node = document.getElementById("check-these-out-data");
+  if (!node?.textContent) return null;
+  try {
+    return JSON.parse(node.textContent);
+  } catch {
+    return null;
+  }
+}
+
+function initCheckTheseOutFromData(data) {
+  if (!data) return;
+  checkTheseOutRecommendations = data.recommendations || [];
+  if ($("#check-picks") && checkTheseOutRecommendations.length > CHECK_THESE_OUT_ROTATE_COUNT) {
+    startCheckTheseOutRotation();
+  }
+}
+
 function setupPostFilters(posts) {
   homePosts = posts;
   populatePostCategoryFilter(posts);
   $("#post-search")?.addEventListener("input", applyPostFilters);
   $("#post-category-filter")?.addEventListener("change", applyPostFilters);
   applyPostFilters();
-}
-
-function readJikanCache(category, options = {}) {
-  try {
-    const raw = localStorage.getItem(`anime-radar:${category}`);
-    if (!raw) return null;
-    const cached = JSON.parse(raw);
-    if (!options.allowStale && Date.now() - cached.createdAt > JIKAN_CACHE_TTL) return null;
-    return cached.items;
-  } catch {
-    return null;
-  }
-}
-
-function writeJikanCache(category, items) {
-  try {
-    localStorage.setItem(`anime-radar:${category}`, JSON.stringify({
-      createdAt: Date.now(),
-      items
-    }));
-  } catch {
-    // Storage can be unavailable in private browsing; the radar still works without cache.
-  }
-}
-
-async function fetchAnimeRadar(category) {
-  const cached = readJikanCache(category);
-  if (cached) return cached;
-
-  try {
-    const response = await fetch(`/.netlify/functions/anime-radar?category=${encodeURIComponent(category)}`);
-    if (!response.ok) throw new Error(`Anime radar proxy failed: ${response.status}`);
-    const payload = await response.json();
-    const items = Array.isArray(payload.data) ? payload.data : [];
-    writeJikanCache(category, items);
-    return items;
-  } catch (error) {
-    const stale = readJikanCache(category, { allowStale: true });
-    if (stale) return stale;
-    throw error;
-  }
-}
-
-function renderAnimeRadarCards(items = []) {
-  const list = $("#anime-radar-list");
-  const empty = $("#anime-radar-empty");
-  const template = $("#anime-radar-template");
-  if (!list || !template) return;
-
-  list.innerHTML = "";
-  empty?.classList.toggle("hidden", items.length > 0);
-  items.forEach((anime) => {
-    const clone = template.content.cloneNode(true);
-    const card = clone.querySelector(".anime-radar-card");
-    const image = clone.querySelector("img");
-    const score = clone.querySelector(".anime-radar-score");
-    const details = [
-      anime.type,
-      anime.episodes ? `${anime.episodes} eps` : anime.status,
-      anime.year
-    ].filter(Boolean).slice(0, 2).join(" · ");
-
-    card.href = anime.url;
-    image.src = normalizeAssetUrl(anime.imageUrl);
-    image.alt = `${anime.title} cover art`;
-    score.textContent = anime.score ? `★ ${Number(anime.score).toFixed(1)}` : "New";
-    clone.querySelector("h3").textContent = anime.title;
-    clone.querySelector("p").textContent = details || "Anime";
-    list.append(clone);
-  });
-}
-
-async function loadAnimeRadar(category = "popular") {
-  const list = $("#anime-radar-list");
-  const empty = $("#anime-radar-empty");
-  if (!list) return;
-
-  list.setAttribute("aria-busy", "true");
-  empty?.classList.add("hidden");
-  try {
-    renderAnimeRadarCards(await fetchAnimeRadar(category));
-  } catch (error) {
-    console.error(error);
-    list.innerHTML = "";
-    empty?.classList.remove("hidden");
-  } finally {
-    list.setAttribute("aria-busy", "false");
-  }
-}
-
-function initAnimeRadar() {
-  const tabs = [...document.querySelectorAll(".radar-tab")];
-  if (!tabs.length) return;
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      tabs.forEach((item) => {
-        const isActive = item === tab;
-        item.classList.toggle("active", isActive);
-        item.setAttribute("aria-selected", String(isActive));
-      });
-      loadAnimeRadar(tab.dataset.radarCategory || "popular");
-    });
-  });
-
-  const activeTab = tabs.find((tab) => tab.classList.contains("active")) || tabs[0];
-  loadAnimeRadar(activeTab.dataset.radarCategory || "popular");
 }
 
 async function renderPostView(postId) {
@@ -890,6 +921,7 @@ function initPrerenderedHome(feed) {
   $("#post-search")?.addEventListener("input", filterPrerenderedCards);
   $("#post-category-filter")?.addEventListener("change", filterPrerenderedCards);
   wirePrerenderedPagination();
+  initCheckTheseOutFromData(readPrerenderedCheckTheseOut());
   trackPageView({ contentType: "home", contentTitle: "Home" });
 }
 
@@ -935,9 +967,9 @@ function initStaticPostPage() {
 }
 
 async function initHome() {
-  initAnimeRadar();
   if (!hasConfiguredFirebase()) {
     renderPostCards([]);
+    renderCheckTheseOut([], []);
     return;
   }
   const params = new URLSearchParams(location.search);
@@ -957,6 +989,8 @@ async function initHome() {
 
   try {
     const [posts, rankings] = await Promise.all([fetchPosts(), fetchRankings().catch(() => [])]);
+    currentRankings = rankings;
+    renderCheckTheseOut(posts, rankings);
     const allItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
     setupPostFilters(allItems);
     trackPageView({ contentType: "home", contentTitle: "Home" });

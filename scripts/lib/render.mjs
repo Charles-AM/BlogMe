@@ -1,8 +1,10 @@
 const SITE_URL = "https://regressedranker.xyz";
-const RECENT_POSTS_COLLAPSED_COUNT = 3;
+const RECENT_POSTS_COLLAPSED_COUNT = 6;
 const SIMPLE_LIST_MAX_ITEMS = 5;
+const CHECK_THESE_OUT_ROTATE_COUNT = 3;
+const CHECK_THESE_OUT_ROTATE_MS = 6000;
 
-export { SITE_URL, RECENT_POSTS_COLLAPSED_COUNT };
+export { SITE_URL, RECENT_POSTS_COLLAPSED_COUNT, CHECK_THESE_OUT_ROTATE_COUNT, CHECK_THESE_OUT_ROTATE_MS };
 
 export function toDate(value) {
   if (!value) return new Date();
@@ -471,6 +473,90 @@ export function serializeFeedForClient(items = []) {
     listItems: post.listItems || [],
     href: post.href || postHref(post)
   }));
+}
+
+export function getLatestBlogPost(posts = []) {
+  const blogPosts = posts.filter((post) => post.kind !== "recommendation");
+  const articles = blogPosts.filter((post) => !isSimpleListPost(post));
+  const pool = articles.length ? articles : blogPosts;
+  return sortFeedItems(pool)[0] || null;
+}
+
+export function getRotatingPicks(recommendations = [], startIndex = 0, count = CHECK_THESE_OUT_ROTATE_COUNT) {
+  if (!recommendations.length) return [];
+  const limit = Math.min(count, recommendations.length);
+  const picks = [];
+  for (let i = 0; i < limit; i++) {
+    picks.push(recommendations[(startIndex + i) % recommendations.length]);
+  }
+  return picks;
+}
+
+function renderCheckFeaturedCardHtml(post) {
+  const href = post.href || postHref(post);
+  const action = isSimpleListPost(post) ? "List only" : "Read";
+  return `
+    <a class="check-featured-card reveal-card" href="${escapeHtml(href)}">
+      <div class="check-featured-media">
+        <img src="${escapeHtml(normalizeAssetUrl(post.imageUrl))}" alt="${escapeHtml(post.title)}">
+        <span class="check-featured-badge">${escapeHtml(post.category || "Anime")}</span>
+      </div>
+      <div class="check-featured-copy">
+        <p class="check-featured-label">Latest read</p>
+        <h3>${escapeHtml(post.title)}</h3>
+        <p>${escapeHtml(postCardPreview(post))}</p>
+        <span class="read-chip">${action}</span>
+      </div>
+    </a>
+  `.trim();
+}
+
+function renderCheckPickCardHtml(rec) {
+  const href = rec.href || getRecommendationListHref(rec.title);
+  return `
+    <a class="check-pick-card reveal-card" href="${escapeHtml(href)}" data-check-pick>
+      <img src="${escapeHtml(normalizeAssetUrl(rec.imageUrl))}" alt="">
+      <div>
+        <span class="check-pick-label">List</span>
+        <h3>${escapeHtml(rec.title)}</h3>
+        <p>${escapeHtml(postCardPreview(rec))}</p>
+      </div>
+    </a>
+  `.trim();
+}
+
+export function renderCheckTheseOutHtml(posts = [], rankings = [], rotateIndex = 0) {
+  const latest = getLatestBlogPost(posts);
+  const recommendations = buildRecommendationLists(rankings);
+  if (!latest && !recommendations.length) {
+    return { gridHtml: "", hasContent: false, recommendations: [] };
+  }
+
+  const picks = getRotatingPicks(recommendations, rotateIndex);
+  const picksHtml = picks.map((rec) => renderCheckPickCardHtml(rec)).join("\n");
+  const gridHtml = `
+    ${latest ? renderCheckFeaturedCardHtml(latest) : ""}
+    ${picksHtml ? `<div class="check-picks" id="check-picks">${picksHtml}</div>` : ""}
+  `.trim();
+
+  return { gridHtml, hasContent: true, recommendations };
+}
+
+export function serializeCheckTheseOutForClient(posts = [], rankings = []) {
+  const recommendations = buildRecommendationLists(rankings).map((rec) => ({
+    title: rec.title,
+    imageUrl: rec.imageUrl,
+    content: rec.content,
+    href: rec.href || getRecommendationListHref(rec.title),
+    category: rec.category || "Recommendations",
+    tags: normalizeTags(rec.tags)
+  }));
+
+  const latest = getLatestBlogPost(posts);
+  return {
+    latest: latest ? serializeFeedForClient([latest])[0] : null,
+    recommendations
+  };
 }
 
 export function parseShortText(content = "") {

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260709i">
+    <link rel="stylesheet" href="style.css?v=20260713a">
   </head>
   <body data-page="home">
     <div class="site-shell">
@@ -69,22 +69,18 @@
           <div class="pagination recent-posts-toggle" id="pagination"></div>
         </section>
 
-        <section class="content-band anime-radar" id="anime-radar">
+        <section class="content-band check-these-out" id="check-these-out">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Anime Radar</p>
-              <h2>Popular, trending, and airing now</h2>
+              <p class="eyebrow">From the blog</p>
+              <h2>Check these out</h2>
             </div>
-            <div class="radar-tabs" role="tablist" aria-label="Anime radar categories">
-              <button class="radar-tab active" type="button" data-radar-category="popular" aria-selected="true">Popular</button>
-              <button class="radar-tab" type="button" data-radar-category="trending" aria-selected="false">Trending</button>
-              <button class="radar-tab" type="button" data-radar-category="airing" aria-selected="false">Currently Airing</button>
-            </div>
+            <a class="section-link" href="recommendations.html">All lists</a>
           </div>
-          <div class="anime-radar-grid" id="anime-radar-list" aria-live="polite"></div>
-          <div class="empty-state hidden" id="anime-radar-empty">
-            <h3>Anime radar is unavailable</h3>
-            <p>Jikan may be busy right now. Try refreshing in a moment.</p>
+          <div class="check-these-out-grid" id="check-these-out-grid" aria-live="polite"></div>
+          <div class="empty-state hidden" id="check-these-out-empty">
+            <h3>Nothing to highlight yet</h3>
+            <p>Publish a post or recommendation list and it will show up here.</p>
           </div>
         </section>
       </main>
@@ -116,18 +112,6 @@
         </a>
       </article>
     </template>
-
-    <template id="anime-radar-template">
-      <a class="anime-radar-card reveal-card" href="#" target="_blank" rel="noopener">
-        <div class="anime-radar-cover">
-          <img alt="">
-          <span class="anime-radar-score"></span>
-        </div>
-        <h3></h3>
-        <p></p>
-      </a>
-    </template>
-
-    <script type="module" src="script.js?v=20260709k"></script>
+    <script type="module" src="script.js?v=20260713a"></script>
   </body>
 </html>
