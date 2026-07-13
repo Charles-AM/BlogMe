@@ -22,6 +22,8 @@ import {
   renderMetaTags,
   renderPostBodyHtml,
   renderPostsGridHtml,
+  renderCheckTheseOutHtml,
+  serializeCheckTheseOutForClient,
   renderRecommendationTopicBodyHtml,
   renderRecommendationsHubHtml,
   resolvePostSlug,
@@ -68,10 +70,12 @@ function replaceBetween(html, startMarker, endMarker, replacement) {
   return `${html.slice(0, start + startMarker.length)}${replacement}${html.slice(end)}`;
 }
 
-function injectHomepage(feedItems) {
+function injectHomepage(feedItems, posts, rankings) {
   let html = readFileSync(join(ROOT, "index.html"), "utf8");
   const { cardsHtml, paginationHtml } = renderPostsGridHtml(feedItems);
   const feedJson = JSON.stringify(serializeFeedForClient(feedItems));
+  const { gridHtml, hasContent } = renderCheckTheseOutHtml(posts, rankings);
+  const spotlightJson = JSON.stringify(serializeCheckTheseOutForClient(posts, rankings));
 
   html = html.replace(
     /<meta name="description" content="[^"]*">/,
@@ -80,13 +84,17 @@ function injectHomepage(feedItems) {
 
   html = replaceBetween(html, '<div class="blog-grid" id="posts-grid" aria-live="polite">', "</div>", `\n${cardsHtml}\n`);
   html = replaceBetween(html, '<div class="pagination recent-posts-toggle" id="pagination">', "</div>", paginationHtml ? `\n${paginationHtml}\n` : "\n");
+  html = replaceBetween(html, '<div class="check-these-out-grid" id="check-these-out-grid" aria-live="polite">', "</div>", gridHtml ? `\n${gridHtml}\n` : "\n");
 
   const emptyClass = feedItems.length ? "empty-state hidden" : "empty-state";
   html = html.replace(/class="empty-state hidden" id="posts-empty"/, `class="${emptyClass}" id="posts-empty"`);
 
+  const spotlightEmptyClass = hasContent ? "empty-state hidden" : "empty-state";
+  html = html.replace(/class="empty-state hidden" id="check-these-out-empty"/, `class="${spotlightEmptyClass}" id="check-these-out-empty"`);
+
   html = html.replace(
     "</body>",
-    `    <script id="posts-feed-data" type="application/json">${feedJson}</script>\n  </body>`
+    `    <script id="posts-feed-data" type="application/json">${feedJson}</script>\n    <script id="check-these-out-data" type="application/json">${spotlightJson}</script>\n  </body>`
   );
 
   writeFileSync(join(DIST, "index.html"), html, "utf8");
@@ -407,7 +415,7 @@ async function main() {
   console.log(`Found ${articleCount} articles, ${listCount} character lists, ${rankings.length} ranking items, and ${recommendationTopics.length} recommendation topics.`);
 
   copyStaticAssets();
-  injectHomepage(feedItems);
+  injectHomepage(feedItems, posts, rankings);
   injectArchive(feedItems);
   injectRecommendations(rankings);
   writePostPages(blogPosts);
