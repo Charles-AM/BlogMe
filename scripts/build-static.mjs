@@ -27,6 +27,7 @@ import {
   renderRecommendationTopicBodyHtml,
   renderRecommendationsHubHtml,
   resolvePostSlug,
+  withUniquePostSlugs,
   serializeFeedForClient,
   serializeRankingsForClient,
   slugify,
@@ -247,8 +248,8 @@ function injectRecommendations(rankings) {
 function writePostPages(posts) {
   for (const post of posts) {
     if (post.kind === "recommendation" || isSimpleListPost(post)) continue;
-    const postId = String(post.id).toLowerCase();
-    const dir = join(DIST, "posts", postId);
+    const slug = post.slug || resolvePostSlug(post);
+    const dir = join(DIST, "posts", slug);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), renderPostPageShell(post), "utf8");
   }
@@ -257,7 +258,7 @@ function writePostPages(posts) {
 function writeListPages(posts) {
   for (const post of posts) {
     if (!isSimpleListPost(post)) continue;
-    const slug = resolvePostSlug(post);
+    const slug = post.slug || resolvePostSlug(post);
     const dir = join(DIST, "lists", slug);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), renderPostPageShell(post), "utf8");
@@ -364,29 +365,22 @@ Sitemap: ${SITE_URL}/sitemap.xml
 }
 
 function writeRedirects(blogPosts, recommendationTopics) {
-  const lines = [
-    "# Legacy post URLs -> static post pages",
-    "/index.html?post=:post /posts/:post/ 301",
-    "/?post=:post /posts/:post/ 301"
-  ];
+  const lines = [];
 
   for (const post of blogPosts) {
     const lowerId = String(post.id).toLowerCase();
-    const listPath = listCanonicalPath(post);
+    const target = postCanonicalPath(post);
 
-    if (isSimpleListPost(post)) {
-      lines.push(`/posts/${lowerId}/ ${listPath} 301`);
-      lines.push(`/posts/${post.id}/ ${listPath} 301`);
-    } else if (lowerId !== post.id) {
-      lines.push(`/posts/${post.id}/ /posts/${lowerId}/ 301`);
-      lines.push(`/posts/${post.id} /posts/${lowerId}/ 301`);
-    }
+    lines.push(`/posts/${encodeURIComponent(post.id)}/ ${target} 301`);
+    lines.push(`/posts/${lowerId}/ ${target} 301`);
 
-    const slug = slugify(post.title || "");
-    if (slug) {
-      const target = isSimpleListPost(post) ? listPath : `/posts/${lowerId}/`;
-      lines.push(`/index.html?post=${post.id}-${slug} ${target} 301`);
-      lines.push(`/?post=${post.id}-${slug} ${target} 301`);
+    lines.push(`/index.html?post=${encodeURIComponent(post.id)} ${target} 301`);
+    lines.push(`/?post=${encodeURIComponent(post.id)} ${target} 301`);
+
+    const titleSlug = slugify(post.title || "");
+    if (titleSlug) {
+      lines.push(`/index.html?post=${encodeURIComponent(`${post.id}-${titleSlug}`)} ${target} 301`);
+      lines.push(`/?post=${encodeURIComponent(`${post.id}-${titleSlug}`)} ${target} 301`);
     }
   }
 
@@ -400,13 +394,19 @@ function writeRedirects(blogPosts, recommendationTopics) {
 
 async function main() {
   console.log("Fetching posts and rankings from Firestore...");
-  const [posts, rankings] = await Promise.all([
+  const [rawPosts, rankings] = await Promise.all([
     fetchPosts(),
     fetchRankings().catch(() => [])
   ]);
 
+  const blogPosts = withUniquePostSlugs(rawPosts.filter((post) => post.kind !== "recommendation"));
+  const slugById = new Map(blogPosts.map((post) => [String(post.id), post.slug]));
+  const posts = rawPosts.map((post) => {
+    const slug = slugById.get(String(post.id));
+    return slug ? { ...post, slug } : post;
+  });
+
   const feedItems = sortFeedItems([...posts, ...buildRecommendationLists(rankings)]);
-  const blogPosts = posts.filter((post) => post.kind !== "recommendation");
   const recommendationTopics = getRecommendationTopics(rankings);
   const categoryTopics = getCategoryTopics(blogPosts);
   const articleCount = blogPosts.filter((post) => !isSimpleListPost(post)).length;

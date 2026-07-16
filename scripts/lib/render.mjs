@@ -47,20 +47,34 @@ export function slugify(value = "") {
     .replace(/^-|-$/g, "");
 }
 
+export function resolvePostSlug(post = {}) {
+  const base = slugify(post.title || post.id || "list");
+  return base || slugify(post.id || "list");
+}
+
+export function withUniquePostSlugs(posts = []) {
+  const used = new Set();
+  return posts.map((post) => {
+    let slug = resolvePostSlug(post);
+    if (used.has(slug)) {
+      slug = `${slug}-${String(post.id).toLowerCase().slice(0, 8)}`;
+    }
+    used.add(slug);
+    return { ...post, slug };
+  });
+}
+
 export function postCanonicalPath(post) {
   if (isSimpleListPost(post)) {
     return listCanonicalPath(post);
   }
-  return `/posts/${encodeURIComponent(String(post.id).toLowerCase())}/`;
+  const slug = post.slug || resolvePostSlug(post);
+  return `/posts/${encodeURIComponent(slug)}/`;
 }
 
 export function listCanonicalPath(post = {}) {
-  return `/lists/${encodeURIComponent(resolvePostSlug(post))}/`;
-}
-
-export function resolvePostSlug(post = {}) {
-  const base = slugify(post.title || post.id || "list");
-  return base || slugify(post.id || "list");
+  const slug = post.slug || resolvePostSlug(post);
+  return `/lists/${encodeURIComponent(slug)}/`;
 }
 
 export function recommendationTopicSlug(topic = "") {

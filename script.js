@@ -107,8 +107,13 @@ function getRecommendationListHref(topic = "") {
   return `/recommendations/${encodeURIComponent(slug)}/`;
 }
 
+function resolvePostSlug(post = {}) {
+  const base = slugify(post.title || post.id || "list");
+  return base || slugify(post.id || "list");
+}
+
 function listHref(post = {}) {
-  const slug = slugify(post.title || post.id || "list") || slugify(post.id || "list");
+  const slug = post.slug || resolvePostSlug(post);
   return `/lists/${encodeURIComponent(slug)}/`;
 }
 
@@ -129,7 +134,8 @@ function postHref(post) {
   if (isSimpleListPost(post)) {
     return listHref(post);
   }
-  return `/posts/${encodeURIComponent(String(post.id).toLowerCase())}/`;
+  const slug = post.slug || resolvePostSlug(post);
+  return `/posts/${encodeURIComponent(slug)}/`;
 }
 
 function parsePostIdFromParam(postParam = "") {
@@ -1014,7 +1020,7 @@ function initStaticCategoryPage() {
 
 function initStaticPostPage() {
   const parts = location.pathname.split("/").filter(Boolean);
-  const postId = parts[0] === "posts" ? parts[1] : "";
+  const postSlug = parts[0] === "posts" ? parts[1] : "";
   const title = document.querySelector("main h1")?.textContent || document.title;
 
   $("main")?.querySelector("[data-back-link]")?.addEventListener("click", (event) => {
@@ -1031,7 +1037,7 @@ function initStaticPostPage() {
 
   trackPageView({
     contentType: "post",
-    contentId: postId,
+    contentId: postSlug,
     contentTitle: title,
     title: document.title
   });
